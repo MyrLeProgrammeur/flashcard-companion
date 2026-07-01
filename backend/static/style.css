@@ -160,15 +160,16 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 .health-pill.offline { background: var(--health-offline-bg); color: var(--health-offline); }
 
-.theme-toggle {
+.theme-toggle, .icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 34px; height: 34px;
   border-radius: 50%;
   color: var(--muted);
+  text-decoration: none;
 }
-.theme-toggle:active { background: var(--accent-soft); }
+.theme-toggle:active, .icon-btn:active { background: var(--accent-soft); }
 
 /* ---------- 1a — decks list ---------- */
 
@@ -499,3 +500,45 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   font-family: var(--font-mono); font-size: 12px;
 }
 .restart-step code { font-family: var(--font-mono); background: var(--surface-sunk); padding: 1px 6px; border-radius: 5px; }
+
+/* ---------- réglages SM-2 ---------- */
+
+.settings-form { display: flex; flex-direction: column; gap: 18px; padding-bottom: 24px; }
+
+.settings-card {
+  display: flex; flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+.settings-row:last-child { border-bottom: none; }
+
+.settings-label { font-size: 15px; }
+
+.settings-input-wrap {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface-sunk);
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+
+.settings-input {
+  width: 56px;
+  border: none; background: none; outline: none;
+  font-family: var(--font-mono); font-size: 15px; color: var(--ink);
+  text-align: right;
+}
+
+.settings-unit { font-family: var(--font-mono); font-size: 12px; color: var(--muted-2); }
+
+.settings-status { text-align: center; font-size: 13px; color: var(--muted); min-height: 18px; margin: 0; }
+.settings-status.ok { color: var(--accent); }
+.settings-status.error { color: var(--health-offline); }

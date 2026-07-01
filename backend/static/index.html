@@ -13,6 +13,7 @@
     <header class="app-header">
       <span class="mono">Flashcards</span>
       <div style="display:flex;align-items:center;gap:8px">
+        <a class="icon-btn" href="/settings.html" aria-label="Réglages" id="settings-link"></a>
         <button class="theme-toggle" data-theme-icon aria-label="Thème" onclick="toggleTheme()"></button>
         <span class="health-pill" id="health"></span>
       </div>
@@ -161,6 +162,7 @@
     }
 
     window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("settings-link").innerHTML = icon("settings");
       document.getElementById("off-vignette").innerHTML = icon("serverOff");
       document.getElementById("retry").innerHTML = icon("refresh") + " Réessayer";
       document.getElementById("retry").addEventListener("click", () => location.reload());

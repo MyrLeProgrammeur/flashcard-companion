@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <title>Réglages — Flashcard Companion</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/common.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <a class="icon-btn" href="/" aria-label="Retour" id="back-btn"></a>
+      <span class="mono">Réglages</span>
+      <button class="theme-toggle" data-theme-icon aria-label="Thème" onclick="toggleTheme()"></button>
+    </header>
+
+    <h1 class="screen-title">SM-2</h1>
+    <p class="screen-sub">Intervalles gradués (en jours) appliqués dès la 1ʳᵉ révision, et bonus des cartes matures.</p>
+
+    <form class="settings-form" id="settings-form">
+      <div class="settings-card">
+        <label class="settings-row">
+          <span class="settings-label">Encore</span>
+          <span class="settings-input-wrap">
+            <input class="settings-input" type="number" step="0.1" min="0" name="again_days" id="again_days" required>
+            <span class="settings-unit">j</span>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Difficile</span>
+          <span class="settings-input-wrap">
+            <input class="settings-input" type="number" step="0.1" min="0" name="hard_days" id="hard_days" required>
+            <span class="settings-unit">j</span>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Correct</span>
+          <span class="settings-input-wrap">
+            <input class="settings-input" type="number" step="0.1" min="0" name="good_days" id="good_days" required>
+            <span class="settings-unit">j</span>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Facile</span>
+          <span class="settings-input-wrap">
+            <input class="settings-input" type="number" step="0.1" min="0" name="easy_days" id="easy_days" required>
+            <span class="settings-unit">j</span>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Bonus Facile</span>
+          <span class="settings-input-wrap">
+            <input class="settings-input" type="number" step="0.05" min="1" name="easy_bonus" id="easy_bonus" required>
+            <span class="settings-unit">×</span>
+          </span>
+        </label>
+      </div>
+
+      <button class="cta" type="submit" id="save-btn">Enregistrer</button>
+      <p class="settings-status" id="status"></p>
+    </form>
+  </div>
+
+  <script src="/settings.js" defer></script>
+</body>
+</html>
