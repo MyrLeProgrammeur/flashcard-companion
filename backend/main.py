@@ -34,7 +34,19 @@ app.include_router(routes_explain.router)
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    checks = {}
+
+    try:
+        app.state.store.conn.execute("SELECT 1").fetchone()
+        checks["db"] = "ok"
+    except Exception as exc:
+        checks["db"] = f"error: {exc}"
+
+    checks["infercom_api_key"] = "ok" if os.environ.get("INFERCOM_API_KEY") else "missing"
+
+    if all(v == "ok" for v in checks.values()):
+        return {"status": "ok"}
+    return {"status": "degraded", "checks": checks}
 
 
 app.mount("/", StaticFiles(directory=Path(__file__).parent / "static", html=True), name="static")
