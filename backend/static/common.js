@@ -16,6 +16,7 @@ const ICONS = {
   moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-linejoin="round"/>',
   settings: '<circle cx="12" cy="12" r="3" fill="none" stroke="currentColor"/><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.5-2-3.5-2.4.6a7.7 7.7 0 0 0-1.7-1l-.4-2.4H9.1l-.4 2.4a7.7 7.7 0 0 0-1.7 1l-2.4-.6-2 3.5 2 1.5a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.5 2.4-.6a7.7 7.7 0 0 0 1.7 1l.4 2.4h5.8l.4-2.4a7.7 7.7 0 0 0 1.7-1l2.4.6 2-3.5-2-1.5z" fill="none" stroke="currentColor" stroke-linejoin="round"/>',
   stats: '<path d="M4 20V10M12 20V4M20 20v-7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
+  exam: '<rect x="4" y="5" width="16" height="16" rx="2" fill="none" stroke="currentColor"/><path d="M4 9h16M8 3v4M16 3v4" stroke="currentColor" stroke-linecap="round"/><path d="M9 14l2 2 4-4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
 };
 
 function icon(name, cls = "icon") {

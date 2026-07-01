@@ -46,6 +46,12 @@ CREATE TABLE IF NOT EXISTS review_log (
     prev_reps INTEGER,
     new_reps INTEGER
 );
+CREATE TABLE IF NOT EXISTS subject_grades (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    deck_path TEXT NOT NULL,
+    expected_results_date TEXT NOT NULL,
+    grade REAL
+);
 """
 
 
@@ -177,6 +183,47 @@ class SrsStore:
             )
         self.conn.commit()
         return current
+
+    def create_subject_grade(self, deck_path: str, expected_results_date: str) -> dict:
+        """subject_grades (Batch 8) is normal user-editable CRUD, NOT
+        append-only like review_log — the user creates a row ahead of time,
+        then comes back later to fill in the grade via update_grade."""
+        cur = self.conn.execute(
+            "INSERT INTO subject_grades (deck_path, expected_results_date, grade) "
+            "VALUES (?, ?, NULL)",
+            (deck_path, expected_results_date),
+        )
+        self.conn.commit()
+        return self.get_subject_grade(cur.lastrowid)
+
+    def get_subject_grade(self, exam_id: int) -> dict | None:
+        row = self.conn.execute(
+            "SELECT id, deck_path, expected_results_date, grade "
+            "FROM subject_grades WHERE id = ?",
+            (exam_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        return {"id": row[0], "deck_path": row[1], "expected_results_date": row[2], "grade": row[3]}
+
+    def list_subject_grades(self) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT id, deck_path, expected_results_date, grade "
+            "FROM subject_grades ORDER BY expected_results_date"
+        ).fetchall()
+        return [
+            {"id": r[0], "deck_path": r[1], "expected_results_date": r[2], "grade": r[3]}
+            for r in rows
+        ]
+
+    def update_grade(self, exam_id: int, grade: float) -> dict | None:
+        """Plain UPDATE (not append-only) — sets/overwrites the grade once
+        it's known. Returns None if the row doesn't exist (caller -> 404)."""
+        if self.get_subject_grade(exam_id) is None:
+            return None
+        self.conn.execute("UPDATE subject_grades SET grade = ? WHERE id = ?", (grade, exam_id))
+        self.conn.commit()
+        return self.get_subject_grade(exam_id)
 
     def get_explanation(self, guid: str) -> dict | None:
         row = self.conn.execute(

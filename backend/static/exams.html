@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <title>Examens — Flashcard Companion</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/common.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <a class="icon-btn" href="/" aria-label="Retour" id="back-btn"></a>
+      <span class="mono">Examens</span>
+      <button class="theme-toggle" data-theme-icon aria-label="Thème" onclick="toggleTheme()"></button>
+    </header>
+
+    <h1 class="screen-title">Nouvel examen</h1>
+    <p class="screen-sub">Matière (dossier racine du deck) et date approximative des résultats.</p>
+
+    <form class="settings-form" id="exam-form">
+      <div class="settings-card">
+        <label class="settings-row">
+          <span class="settings-label">Matière</span>
+          <span class="settings-input-wrap">
+            <input class="settings-input" style="width:140px;text-align:left" type="text" name="deck_path" id="deck_path" required>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Résultats attendus</span>
+          <span class="settings-input-wrap">
+            <input class="settings-input" style="width:140px" type="date" name="expected_results_date" id="expected_results_date" required>
+          </span>
+        </label>
+      </div>
+      <button class="cta" type="submit" id="add-btn">Ajouter</button>
+      <p class="settings-status" id="form-status"></p>
+    </form>
+
+    <h2 class="section-title">Corrélation par matière</h2>
+    <p class="screen-sub">Note obtenue, % de réussite en révision, temps investi — trois chiffres indépendants, pas de score composite : c'est à vous de juger.</p>
+    <div class="cards-table-wrap">
+      <table class="cards-table" id="exams-table">
+        <thead>
+          <tr>
+            <th>Matière</th>
+            <th>Résultats</th>
+            <th>Note</th>
+            <th>Réussite</th>
+            <th>Temps investi</th>
+          </tr>
+        </thead>
+        <tbody id="exams-tbody"></tbody>
+      </table>
+      <p class="empty-note hidden" id="exams-empty">Aucun examen enregistré pour l'instant.</p>
+    </div>
+  </div>
+
+  <script src="/exams.js" defer></script>
+</body>
+</html>

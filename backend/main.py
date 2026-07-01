@@ -11,7 +11,14 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from openai import OpenAI
 
-from api import routes_decks, routes_explain, routes_review, routes_settings, routes_stats
+from api import (
+    routes_decks,
+    routes_exams,
+    routes_explain,
+    routes_review,
+    routes_settings,
+    routes_stats,
+)
 from config import load_config
 from srs_store import SrsStore
 
@@ -32,6 +39,7 @@ app.include_router(routes_review.router)
 app.include_router(routes_explain.router)
 app.include_router(routes_settings.router)
 app.include_router(routes_stats.router)
+app.include_router(routes_exams.router)
 
 
 @app.get("/api/health")
