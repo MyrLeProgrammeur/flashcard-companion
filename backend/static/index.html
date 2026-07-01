@@ -13,6 +13,7 @@
     <header class="app-header">
       <span class="mono">Flashcards</span>
       <div style="display:flex;align-items:center;gap:8px">
+        <a class="icon-btn" href="/courses.html" aria-label="Cours" id="courses-link"></a>
         <a class="icon-btn" href="/exams.html" aria-label="Examens" id="exams-link"></a>
         <a class="icon-btn" href="/stats.html" aria-label="Statistiques" id="stats-link"></a>
         <a class="icon-btn" href="/settings.html" aria-label="Réglages" id="settings-link"></a>
@@ -164,6 +165,7 @@
     }
 
     window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("courses-link").innerHTML = icon("doc");
       document.getElementById("settings-link").innerHTML = icon("settings");
       document.getElementById("stats-link").innerHTML = icon("stats");
       document.getElementById("exams-link").innerHTML = icon("exam");

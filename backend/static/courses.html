@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <title>Cours — Flashcard Companion</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/common.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <a class="icon-btn" href="/" aria-label="Retour" id="back-btn"></a>
+      <span class="mono">Cours</span>
+      <button class="theme-toggle" data-theme-icon aria-label="Thème" onclick="toggleTheme()"></button>
+    </header>
+
+    <h1 class="screen-title">PDF de cours</h1>
+    <p class="screen-sub">Un dossier par matière, retrouvé automatiquement à partir des decks — pas garanti à 100%.</p>
+
+    <div id="courses-list"></div>
+  </div>
+
+  <script src="/courses.js" defer></script>
+</body>
+</html>
