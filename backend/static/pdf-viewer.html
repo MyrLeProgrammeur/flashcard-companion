@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <title>Cours — Flashcard Companion</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/common.js" defer></script>
+</head>
+<body>
+  <div class="app pdf-app">
+    <header class="app-header">
+      <a class="icon-btn" href="/courses.html" aria-label="Retour" id="back-btn"></a>
+      <span class="mono" id="pdf-title">Cours</span>
+      <button class="theme-toggle" data-theme-icon aria-label="Thème" onclick="toggleTheme()"></button>
+    </header>
+
+    <div class="pdf-viewport" id="pdf-viewport">
+      <canvas id="pdf-canvas"></canvas>
+      <p class="empty-note hidden" id="pdf-status"></p>
+    </div>
+
+    <div class="pdf-nav">
+      <button class="pdf-nav-btn" id="prev-btn" aria-label="Page précédente" disabled></button>
+      <span class="mono" id="page-indicator">— / —</span>
+      <button class="pdf-nav-btn" id="next-btn" aria-label="Page suivante" disabled></button>
+    </div>
+  </div>
+
+  <script type="module" src="/pdf-viewer.js"></script>
+</body>
+</html>

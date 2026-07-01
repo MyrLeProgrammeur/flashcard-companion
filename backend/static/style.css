@@ -608,3 +608,40 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .cards-table th.sorted.desc::after { content: " ▼"; }
 .cards-table td { font-family: var(--font-mono); color: var(--ink-soft); }
 .cards-table td:first-child { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- PDF viewer (Batch 4) ---------- */
+
+.pdf-app { max-width: 900px; padding: 0 14px; }
+
+.pdf-viewport {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+  background: var(--bg-canvas);
+  border-radius: 12px;
+  padding: 10px;
+  min-height: 0;
+}
+.pdf-viewport canvas { max-width: 100%; height: auto; box-shadow: var(--card-shadow); }
+
+.pdf-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 14px 0 20px;
+}
+
+.pdf-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  color: var(--ink);
+  background: var(--accent-soft);
+}
+.pdf-nav-btn:active { background: var(--accent); color: var(--bg); }
+.pdf-nav-btn[disabled] { opacity: .35; pointer-events: none; }
