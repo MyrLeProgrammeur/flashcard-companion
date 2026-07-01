@@ -1,6 +1,14 @@
+# Runtime deps — must build on Termux (Android / aarch64), the production target.
+# pydantic-core and jiter compile from source there (needs `pkg install rust`);
+# manylinux wheels are NOT usable on Termux (Bionic libc).
 fastapi>=0.115.0
-uvicorn[standard]>=0.30.0
+uvicorn>=0.30.0        # plain: the [standard] extras (uvloop/httptools/watchfiles) don't build on Termux
 python-dotenv>=1.0.0
 openai>=1.50.0
 pyyaml>=6.0
-pdfplumber>=0.11.0
+pydantic>=2
+
+# Optional — PDF grounding (pdf_context.py). It imports lazily, so the app runs
+# in card-only mode without it. NOT installable on Termux (pypdfium2 ships no
+# Termux build). Install on a PC for locally PDF-grounded dev:
+#   pip install pdfplumber

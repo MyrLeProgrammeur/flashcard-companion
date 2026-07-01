@@ -2,40 +2,87 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Review — flashcard-companion</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <title>Review — Flashcard Companion</title>
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/vendor/katex/katex.min.css">
+  <script src="/vendor/katex/katex.min.js" defer></script>
+  <script src="/vendor/katex/contrib/auto-render.min.js" defer></script>
+  <script src="/common.js" defer></script>
 </head>
 <body>
-  <p><a href="/index.html">&larr; Decks</a></p>
-  <h1 id="deck-title"></h1>
+  <div class="app">
+    <div class="review-body">
+      <!-- topbar -->
+      <div class="topbar">
+        <a class="back" href="/" aria-label="Retour" id="back-btn"></a>
+        <div class="prog-wrap">
+          <div class="prog-head">
+            <span id="deck-name">—</span>
+            <span class="pos"><b id="pos">0</b> / <span id="total">0</span></span>
+          </div>
+          <div class="progress"><span id="bar" style="width:0%"></span></div>
+        </div>
+        <span class="health-pill" id="health"><span class="dot"></span></span>
+      </div>
 
-  <div class="card-box" id="card-box">
-    <div id="front"></div>
-    <div id="back-section" class="back hidden">
-      <div id="back"></div>
-      <div id="note" class="note"></div>
+      <!-- flip card -->
+      <div class="card-flip" id="flip">
+        <div class="card-inner">
+          <div class="card-face front">
+            <span class="face-label">Recto</span>
+            <div class="card-q" id="front"></div>
+            <div class="card-hint">Touchez pour révéler</div>
+          </div>
+          <div class="card-face back">
+            <span class="face-label">Verso</span>
+            <div class="card-a" id="back"></div>
+            <div class="card-note hidden" id="note"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- bottom zone -->
+      <div class="review-foot">
+        <!-- recto state -->
+        <div class="recto-band" id="recto-band">
+          Touchez la carte pour répondre
+        </div>
+        <!-- verso state -->
+        <button class="explain-btn hidden" id="explain-btn"></button>
+        <div class="rating-row hidden" id="rating-row">
+          <button class="rate again" data-q="1"><span class="lbl">Encore</span><span class="iv" data-iv="again"></span></button>
+          <button class="rate hard" data-q="3"><span class="lbl">Difficile</span><span class="iv" data-iv="hard"></span></button>
+          <button class="rate good" data-q="4"><span class="lbl">Correct</span><span class="iv" data-iv="good"></span></button>
+          <button class="rate easy" data-q="5"><span class="lbl">Facile</span><span class="iv" data-iv="easy"></span></button>
+        </div>
+      </div>
+
+      <!-- session end -->
+      <div class="session-end hidden" id="session-end">
+        <div class="big">Session terminée</div>
+        <p id="end-sub">Toutes les cartes dues ont été revues.</p>
+        <a class="cta" href="/" style="width:auto;padding:14px 28px;margin-top:12px">Retour aux decks</a>
+      </div>
     </div>
-    <div id="explanation-section" class="explanation hidden">
-      <div id="explanation-text"></div>
-      <div id="explanation-sources" class="sources"></div>
+  </div>
+
+  <!-- explain bottom sheet (1c / 1d) -->
+  <div class="sheet-overlay" id="sheet-overlay"></div>
+  <div class="sheet" id="sheet">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head">
+      <h2>Explication approfondie</h2>
+      <button class="sheet-close" id="sheet-close" aria-label="Fermer"></button>
     </div>
+    <div class="src-chip pdf hidden" id="src-chip"></div>
+    <div class="sheet-scroll">
+      <div class="degr-band hidden" id="degr-band"></div>
+      <div class="md" id="explain-md"></div>
+    </div>
+    <div class="sheet-foot" id="sheet-foot"></div>
   </div>
 
-  <div class="action-buttons">
-    <button id="btn-show">Voir la réponse</button>
-    <button id="btn-explain">Détaille / explique en profondeur</button>
-  </div>
-
-  <div class="rating-buttons hidden" id="rating-buttons">
-    <button id="btn-again">Again</button>
-    <button id="btn-hard">Hard</button>
-    <button id="btn-good">Good</button>
-    <button id="btn-easy">Easy</button>
-  </div>
-
-  <p id="empty-state" class="hidden">Rien à réviser dans ce deck pour le moment.</p>
-
-  <script src="/app.js"></script>
+  <script src="/app.js" defer></script>
 </body>
 </html>

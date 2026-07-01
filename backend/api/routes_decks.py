@@ -2,7 +2,30 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request
 
+from srs import QUALITY_AGAIN, QUALITY_EASY, QUALITY_GOOD, QUALITY_HARD, review
+
 router = APIRouter()
+
+
+def _interval_label(days: float) -> str:
+    """Human, compact label for an SM-2 interval (backend is day-granular)."""
+    if days < 1:
+        return "<1 j"
+    if days < 30:
+        return f"{round(days)} j"
+    if days < 365:
+        return f"{round(days / 30)} mois"
+    return f"{round(days / 365)} an" + ("s" if round(days / 365) > 1 else "")
+
+
+def _rating_previews(state, now: datetime) -> dict:
+    """Projected next interval per rating button, computed by srs.review itself."""
+    return {
+        "again": _interval_label(review(state, QUALITY_AGAIN, now).interval_days),
+        "hard": _interval_label(review(state, QUALITY_HARD, now).interval_days),
+        "good": _interval_label(review(state, QUALITY_GOOD, now).interval_days),
+        "easy": _interval_label(review(state, QUALITY_EASY, now).interval_days),
+    }
 
 
 @router.get("/api/decks")
@@ -48,6 +71,88 @@ def due_cards(subject: str, theme: str, request: Request, limit: int = 20):
 
     due.sort(key=lambda pair: pair[0])
     return [
-        {"guid": c.guid, "front": c.front, "back": c.back, "note": c.note}
+        {
+            "guid": c.guid,
+            "front": c.front,
+            "back": c.back,
+            "note": c.note,
+            "previews": _rating_previews(store.get_state(c.guid), now),
+        }
+        for _, c in due[:limit]
+    ]
+
+
+@router.get("/api/tree")
+def deck_tree(request: Request):
+    """Nested folder tree from the full Anki deck path (`a::b::c`, arbitrary
+    depth). Counts are aggregated over every descendant, so a parent shows the
+    sum of its subtree — read-only, driven entirely by the pipeline's deck names."""
+    apkg_dir = request.app.state.cfg["paths"]["apkg_dir"]
+    store = request.app.state.store
+    import apkg_reader
+
+    now = datetime.now(timezone.utc)
+    tree: dict = {}
+    for card in apkg_reader.read_all_cards(apkg_dir):
+        segs = [s for s in card.deck_name.split("::") if s] or ["(sans nom)"]
+        state = store.get_state(card.guid)
+        is_due = state.due_at is not None and state.due_at <= now
+        cursor = tree
+        for seg in segs:
+            node = cursor.setdefault(seg, {"children": {}, "card_count": 0, "due_count": 0})
+            node["card_count"] += 1
+            if is_due:
+                node["due_count"] += 1
+            cursor = node["children"]
+
+    def to_list(children: dict, prefix: list[str]) -> list:
+        out = []
+        for name in sorted(children):
+            node = children[name]
+            path = prefix + [name]
+            out.append(
+                {
+                    "name": name,
+                    "path": "::".join(path),
+                    "card_count": node["card_count"],
+                    "due_count": node["due_count"],
+                    "children": to_list(node["children"], path),
+                }
+            )
+        return out
+
+    return to_list(tree, [])
+
+
+@router.get("/api/due")
+def due_by_path(request: Request, path: str = "", limit: int = 50):
+    """Due cards for a folder subtree. Empty path = everything (review all).
+    Scope = the exact deck OR any deck nested under it (`path::...`)."""
+    apkg_dir = request.app.state.cfg["paths"]["apkg_dir"]
+    store = request.app.state.store
+    import apkg_reader
+
+    now = datetime.now(timezone.utc)
+
+    def in_scope(deck_name: str) -> bool:
+        return not path or deck_name == path or deck_name.startswith(path + "::")
+
+    due = []
+    for card in apkg_reader.read_all_cards(apkg_dir):
+        if not in_scope(card.deck_name):
+            continue
+        state = store.get_state(card.guid)
+        if state.due_at is not None and state.due_at <= now:
+            due.append((state.due_at, card))
+
+    due.sort(key=lambda pair: pair[0])
+    return [
+        {
+            "guid": c.guid,
+            "front": c.front,
+            "back": c.back,
+            "note": c.note,
+            "previews": _rating_previews(store.get_state(c.guid), now),
+        }
         for _, c in due[:limit]
     ]

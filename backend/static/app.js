@@ -1,80 +1,161 @@
-const params = new URLSearchParams(window.location.search);
-const subject = params.get("subject");
-const theme = params.get("theme");
+/* Review session: flip, rating (SM-2), and the "Explique en profondeur" sheet.
+   Scope is a folder path (?path=a::b::c, empty = review everything).
+   Binds to /api/due, /api/cards/{guid}/review, /api/cards/{guid}/explain. */
 
-document.getElementById("deck-title").textContent = `${subject} — ${theme || "(général)"}`;
+const params = new URLSearchParams(location.search);
+const path = params.get("path") || ""; // empty => all decks
+
+const el = (id) => document.getElementById(id);
 
 let queue = [];
-let current = null;
+let idx = 0;
+let flipped = false;
 
+/* ---------- static icons ---------- */
+el("back-btn").innerHTML = icon("chevronLeft");
+el("explain-btn").innerHTML = icon("spark") + " Explique en profondeur";
+el("sheet-close").innerHTML = icon("close");
+
+/* ---------- load queue ---------- */
 async function loadQueue() {
-  const res = await fetch(
-    `/api/decks/${encodeURIComponent(subject)}/${encodeURIComponent(theme)}/due?limit=50`
-  );
+  el("deck-name").textContent = path ? path.split("::").pop() : "Tous les decks";
+  const res = await fetch(`/api/due?path=${encodeURIComponent(path)}&limit=50`, { cache: "no-store" });
   queue = await res.json();
-  nextCard();
+  el("total").textContent = queue.length;
+  render();
 }
 
-function nextCard() {
-  resetCardView();
-  if (queue.length === 0) {
-    document.getElementById("card-box").classList.add("hidden");
-    document.querySelector(".action-buttons").classList.add("hidden");
-    document.getElementById("empty-state").classList.remove("hidden");
-    return;
+/* ---------- render current card ---------- */
+function render() {
+  if (idx >= queue.length) return endSession();
+  flipped = false;
+  el("flip").classList.remove("flipped");
+  const c = queue[idx];
+
+  el("front").textContent = c.front;
+  el("back").innerHTML = c.back; // pipeline fields may carry simple markup
+  const note = el("note");
+  if (c.note && c.note.trim()) {
+    note.innerHTML = c.note;
+    note.classList.remove("hidden");
+  } else {
+    note.classList.add("hidden");
   }
-  current = queue.shift();
-  document.getElementById("front").textContent = current.front;
-  document.getElementById("back").textContent = current.back;
-  document.getElementById("note").textContent = current.note || "";
-}
+  renderMath(el("front"));
+  renderMath(el("back"));
+  renderMath(note);
 
-function resetCardView() {
-  document.getElementById("back-section").classList.add("hidden");
-  document.getElementById("explanation-section").classList.add("hidden");
-  document.getElementById("rating-buttons").classList.add("hidden");
-  document.getElementById("explanation-text").textContent = "";
-  document.getElementById("explanation-sources").textContent = "";
-}
-
-document.getElementById("btn-show").addEventListener("click", () => {
-  document.getElementById("back-section").classList.remove("hidden");
-  document.getElementById("rating-buttons").classList.remove("hidden");
-});
-
-document.getElementById("btn-explain").addEventListener("click", async () => {
-  if (!current) return;
-  const btn = document.getElementById("btn-explain");
-  btn.disabled = true;
-  btn.textContent = "Génération...";
-  try {
-    const res = await fetch(`/api/cards/${current.guid}/explain`, { method: "POST" });
-    const data = await res.json();
-    document.getElementById("explanation-text").textContent = data.explanation;
-    document.getElementById("explanation-sources").textContent =
-      data.source_files.length > 0
-        ? `Sources: ${data.source_files.map((f) => f.split("/").pop()).join(", ")}`
-        : "Aucune source PDF trouvée — explication basée sur la carte seule.";
-    document.getElementById("explanation-section").classList.remove("hidden");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Détaille / explique en profondeur";
-  }
-});
-
-async function rate(quality) {
-  if (!current) return;
-  await fetch(`/api/cards/${current.guid}/review`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ quality }),
+  const p = c.previews || {};
+  document.querySelectorAll("[data-iv]").forEach((n) => {
+    n.textContent = p[n.dataset.iv] || "";
   });
-  nextCard();
+
+  el("pos").textContent = idx + 1;
+  el("bar").style.width = queue.length ? `${(idx / queue.length) * 100}%` : "0%";
+  updateFoot();
 }
 
-document.getElementById("btn-again").addEventListener("click", () => rate(1));
-document.getElementById("btn-hard").addEventListener("click", () => rate(3));
-document.getElementById("btn-good").addEventListener("click", () => rate(4));
-document.getElementById("btn-easy").addEventListener("click", () => rate(5));
+function updateFoot() {
+  el("recto-band").classList.toggle("hidden", flipped);
+  el("explain-btn").classList.toggle("hidden", !flipped);
+  el("rating-row").classList.toggle("hidden", !flipped);
+}
+
+function endSession() {
+  el("bar").style.width = "100%";
+  document.querySelector(".card-flip").classList.add("hidden");
+  document.querySelector(".review-foot").classList.add("hidden");
+  el("session-end").classList.remove("hidden");
+  el("end-sub").textContent = queue.length
+    ? `${queue.length} carte${queue.length > 1 ? "s" : ""} revue${queue.length > 1 ? "s" : ""}.`
+    : "Rien à réviser ici pour le moment.";
+}
+
+/* ---------- flip ---------- */
+el("flip").addEventListener("click", () => {
+  flipped = !flipped;
+  el("flip").classList.toggle("flipped", flipped);
+  updateFoot();
+});
+
+/* ---------- rating ---------- */
+async function rate(quality) {
+  const c = queue[idx];
+  if (!c) return;
+  try {
+    await fetch(`/api/cards/${c.guid}/review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quality }),
+    });
+  } catch { /* offline handled by poll */ }
+  idx += 1;
+  render();
+}
+document.querySelectorAll(".rate").forEach((b) =>
+  b.addEventListener("click", () => rate(parseInt(b.dataset.q, 10)))
+);
+
+/* ---------- explain sheet ---------- */
+function openSheet() { el("sheet-overlay").classList.add("open"); el("sheet").classList.add("open"); }
+function closeSheet() { el("sheet-overlay").classList.remove("open"); el("sheet").classList.remove("open"); }
+el("sheet-close").addEventListener("click", closeSheet);
+el("sheet-overlay").addEventListener("click", closeSheet);
+
+function showSkeleton() {
+  el("degr-band").classList.add("hidden");
+  el("src-chip").classList.add("hidden");
+  el("sheet-foot").textContent = "";
+  el("explain-md").innerHTML =
+    '<div class="skeleton"><div class="sk-line"></div><div class="sk-line"></div><div class="sk-line short"></div>' +
+    '<div class="sk-line" style="margin-top:22px"></div><div class="sk-line"></div><div class="sk-line short"></div></div>';
+}
+
+function baseName(path) { return (path || "").split("/").pop(); }
+
+el("explain-btn").addEventListener("click", async () => {
+  const c = queue[idx];
+  if (!c) return;
+  openSheet();
+  showSkeleton();
+  const t0 = performance.now();
+  try {
+    const res = await fetch(`/api/cards/${c.guid}/explain`, { method: "POST" });
+    const data = await res.json();
+    const ms = Math.round(performance.now() - t0);
+    const grounded = Array.isArray(data.source_files) && data.source_files.length > 0;
+
+    const chip = el("src-chip");
+    chip.classList.remove("hidden", "pdf", "card-only");
+    if (grounded) {
+      chip.classList.add("pdf");
+      chip.innerHTML = icon("doc") + `Ancré dans ${data.source_files.map(baseName).join(", ")}`;
+      el("degr-band").classList.add("hidden");
+    } else {
+      chip.classList.add("card-only");
+      chip.innerHTML = icon("alert") + "Sans source PDF · carte seule";
+      el("degr-band").innerHTML = icon("info") +
+        "<span>Aucun PDF source n'a pu être associé à cette carte. L'explication est générée à partir du recto/verso seulement — recoupe avec ton cours.</span>";
+      el("degr-band").classList.remove("hidden");
+    }
+
+    el("explain-md").innerHTML = renderMarkdown(data.explanation || "");
+    renderMath(el("explain-md"));
+    el("sheet-foot").textContent =
+      `${data.model || "modèle"} · ${data.cached ? "en cache" : "généré à l'instant"} · ${ms} ms`;
+  } catch {
+    el("explain-md").innerHTML =
+      '<p>Impossible de générer l\'explication. Vérifie que le backend et la clé Infercom sont OK.</p>';
+    el("sheet-foot").textContent = "erreur";
+  }
+});
+
+/* ---------- health: redirect to blocking screen if backend drops ---------- */
+startHealthPoll((online) => {
+  const pill = el("health");
+  pill.classList.toggle("offline", !online);
+  pill.innerHTML = '<span class="dot"></span>';
+  if (!online) location.href = "/";
+});
 
 loadQueue();

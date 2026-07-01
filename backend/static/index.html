@@ -2,40 +2,179 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>flashcard-companion</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <title>Flashcard Companion</title>
   <link rel="stylesheet" href="/style.css">
+  <script src="/common.js" defer></script>
 </head>
 <body>
-  <h1>Decks</h1>
-  <ul class="deck-list" id="deck-list"></ul>
+  <!-- 1a — accueil / arbre des dossiers (drill-down) -->
+  <div class="app" id="home">
+    <header class="app-header">
+      <span class="mono">Flashcards</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="theme-toggle" data-theme-icon aria-label="Thème" onclick="toggleTheme()"></button>
+        <span class="health-pill" id="health"></span>
+      </div>
+    </header>
+
+    <nav class="crumbs hidden" id="crumbs"></nav>
+    <h1 class="screen-title" id="title">Aujourd'hui</h1>
+    <p class="screen-sub" id="subtitle">Chargement…</p>
+
+    <div class="deck-list" id="deck-list"></div>
+
+    <div class="sticky-cta">
+      <a class="cta" id="review-all" href="#">
+        <span id="cta-label">Réviser tout</span> <span class="count" id="all-count">0</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- 1f — backend hors ligne (bloquant) -->
+  <div class="app offline-screen hidden" id="offline">
+    <header class="app-header">
+      <span class="mono">Flashcards</span>
+      <span class="health-pill offline"><span class="dot"></span>Hors ligne</span>
+    </header>
+    <div class="offline-body">
+      <div class="offline-vignette" id="off-vignette"></div>
+      <h2 class="offline-title">Backend hors ligne</h2>
+      <p class="offline-desc">Le serveur local ne répond pas sur <code>127.0.0.1:8420</code></p>
+      <div class="restart-card">
+        <div class="head">Pour redémarrer</div>
+        <div class="restart-step"><span class="n">1</span> Ouvre <strong>Termux</strong></div>
+        <div class="restart-step"><span class="n">2</span> Lance <code>./start.sh</code></div>
+      </div>
+      <button class="cta" id="retry" style="margin-top:18px"></button>
+    </div>
+  </div>
 
   <script>
-    async function loadDecks() {
-      const res = await fetch("/api/decks");
-      const tree = await res.json();
-      const list = document.getElementById("deck-list");
-      list.innerHTML = "";
+    let TREE = [];
+    let stack = []; // current path, array of segment names
 
-      for (const subject of Object.keys(tree).sort()) {
-        for (const theme of Object.keys(tree[subject]).sort()) {
-          const { card_count, due_count } = tree[subject][theme];
-          const li = document.createElement("li");
-          const a = document.createElement("a");
-          a.href = `/review.html?subject=${encodeURIComponent(subject)}&theme=${encodeURIComponent(theme)}`;
-          a.innerHTML = `<span>${subject} — ${theme || "(général)"} <small>(${card_count})</small></span>` +
-            (due_count > 0 ? `<span class="due-badge">${due_count}</span>` : "");
-          li.appendChild(a);
-          list.appendChild(li);
-        }
-      }
-
-      if (list.children.length === 0) {
-        list.innerHTML = "<li>Aucun deck trouvé — vérifie apkg_dir dans config.yaml.</li>";
-      }
+    function glyphFor(name) {
+      const map = { "séries": "τ", "series": "τ", "économétrie": "β", "econometrie": "β",
+                    "probabilit": "P", "machine": "ML", "statist": "σ", "inference": "σ",
+                    "confidence": "CI", "régression": "ρ", "regression": "ρ" };
+      const low = name.toLowerCase();
+      for (const k in map) if (low.includes(k)) return map[k];
+      const words = name.trim().split(/\s+/);
+      if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+      return (name.trim()[0] || "?").toUpperCase();
     }
 
-    loadDecks();
+    function nodesAt(st) {
+      let nodes = TREE;
+      for (const seg of st) {
+        const n = nodes.find((x) => x.name === seg);
+        if (!n) return [];
+        nodes = n.children;
+      }
+      return nodes;
+    }
+    function nodeAt(st) {
+      let nodes = TREE, node = null;
+      for (const seg of st) {
+        node = nodes.find((x) => x.name === seg);
+        if (!node) return null;
+        nodes = node.children;
+      }
+      return node;
+    }
+
+    function renderLevel() {
+      const nodes = nodesAt(stack);
+
+      // breadcrumb
+      const crumbs = document.getElementById("crumbs");
+      if (stack.length === 0) {
+        crumbs.classList.add("hidden");
+      } else {
+        crumbs.classList.remove("hidden");
+        crumbs.innerHTML = "";
+        const mk = (label, depth) => {
+          const s = document.createElement("span");
+          s.className = "crumb";
+          s.textContent = label;
+          s.onclick = () => { stack = stack.slice(0, depth); renderLevel(); };
+          return s;
+        };
+        crumbs.appendChild(mk("Accueil", 0));
+        stack.forEach((seg, i) => {
+          const sep = document.createElement("span");
+          sep.className = "crumb-sep"; sep.textContent = "›";
+          crumbs.appendChild(sep);
+          crumbs.appendChild(mk(seg, i + 1));
+        });
+      }
+
+      // title + subtitle
+      document.getElementById("title").textContent = stack.length ? stack[stack.length - 1] : "Aujourd'hui";
+      const totalDue = nodes.reduce((s, n) => s + n.due_count, 0);
+      const anyChildren = nodes.some((n) => n.children.length);
+      const noun = anyChildren ? "dossier" : "deck";
+      document.getElementById("subtitle").textContent =
+        `${totalDue} carte${totalDue !== 1 ? "s" : ""} due${totalDue !== 1 ? "s" : ""} · ${nodes.length} ${noun}${nodes.length !== 1 ? "s" : ""}`;
+
+      // rows
+      const list = document.getElementById("deck-list");
+      list.innerHTML = "";
+      if (nodes.length === 0) {
+        list.innerHTML = `<p class="empty-note">Vide ici. Vérifie que Syncthing a copié les <code>.apkg</code> dans le dossier Flashcards.</p>`;
+      }
+      for (const n of nodes) {
+        const hasKids = n.children.length > 0;
+        const row = document.createElement(hasKids ? "button" : "a");
+        row.className = "deck-row" + (n.due_count === 0 ? " done" : "");
+        if (hasKids) {
+          row.type = "button";
+          row.onclick = () => { stack.push(n.name); renderLevel(); };
+        } else {
+          row.href = `/review.html?path=${encodeURIComponent(n.path)}`;
+        }
+        row.innerHTML =
+          `<span class="deck-glyph">${glyphFor(n.name)}</span>` +
+          `<span class="deck-main"><span class="deck-name">${n.name}</span>` +
+          `<span class="deck-meta">${n.card_count} cartes${n.due_count === 0 ? " · à jour" : ""}</span></span>` +
+          (n.due_count > 0
+            ? `<span class="deck-badge">${n.due_count}</span>`
+            : `<span class="deck-badge zero">0</span>`) +
+          (hasKids ? `<span class="deck-chevron">${icon("chevronRight", "icon")}</span>` : "");
+        list.appendChild(row);
+      }
+
+      // sticky CTA — review whole current subtree
+      const cta = document.getElementById("review-all");
+      const label = document.getElementById("cta-label");
+      label.textContent = stack.length ? `Réviser · ${stack[stack.length - 1]}` : "Réviser tout";
+      document.getElementById("all-count").textContent = totalDue;
+      cta.href = `/review.html?path=${encodeURIComponent(stack.join("::"))}`;
+      cta.classList.toggle("cta-off", totalDue === 0);
+    }
+
+    async function loadTree() {
+      TREE = await (await fetch("/api/tree", { cache: "no-store" })).json();
+      stack = [];
+      renderLevel();
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("off-vignette").innerHTML = icon("serverOff");
+      document.getElementById("retry").innerHTML = icon("refresh") + " Réessayer";
+      document.getElementById("retry").addEventListener("click", () => location.reload());
+
+      const home = document.getElementById("home");
+      const offline = document.getElementById("offline");
+
+      startHealthPoll((online) => {
+        renderHealthPill(document.getElementById("health"), online);
+        home.classList.toggle("hidden", !online);
+        offline.classList.toggle("hidden", online);
+        if (online) loadTree();
+      });
+    });
   </script>
 </body>
 </html>
