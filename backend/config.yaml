@@ -1,11 +1,12 @@
 paths:
   # Dossier où le pipeline PC écrit les .apkg (synchronisé via Syncthing).
-  # Chemin on-device à vérifier en session physique (voir plan §4 risque #1) —
-  # placeholder aligné sur la convention du pipeline en attendant.
-  apkg_dir: "~/storage/shared/Flashcards"
+  # Chemin absolu confirmé sur le tel (2026-07-01) — pas besoin de passer par
+  # ~/storage/shared/ (symlink Termux), l'absolu marche directement une fois
+  # termux-setup-storage exécuté (accès au stockage partagé accordé).
+  apkg_dir: "/storage/emulated/0/syncthing/Flashcards"
 
   # Dossier des PDF de cours sources, synchronisé via Syncthing (même remarque).
-  pdf_dir: "~/storage/shared/Cours"
+  pdf_dir: "/storage/emulated/0/syncthing/Cours"
 
   # État propre de l'app (SRS, cache d'explications, matching PDF résolu).
   # Volontairement HORS de tout dossier Syncthing.
