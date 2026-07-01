@@ -26,3 +26,12 @@ termux-job-scheduler \
   --period-ms 86400000 \
   --persisted true \
   2>>~/server.log || true
+
+# Same re-arm for the exam-results reminder job (Batch 8) — independent
+# job-id so both jobs coexist without clobbering each other.
+termux-job-scheduler \
+  --job-id 1002 \
+  --script ~/flashcard-companion/backend/termux/notify-exam-results.sh \
+  --period-ms 86400000 \
+  --persisted true \
+  2>>~/server.log || true
