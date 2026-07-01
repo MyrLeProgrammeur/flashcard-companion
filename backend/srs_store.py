@@ -7,7 +7,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-from srs import CardState
+from srs import DEFAULT_SETTINGS, CardState
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS card_state (
@@ -18,6 +18,10 @@ CREATE TABLE IF NOT EXISTS card_state (
     due_at TEXT,
     last_reviewed_at TEXT,
     created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS explain_cache (
     guid TEXT PRIMARY KEY,
@@ -103,6 +107,33 @@ class SrsStore:
             (now.isoformat(),),
         ).fetchall()
         return {r[0] for r in rows}
+
+    def get_settings(self) -> dict:
+        """SM-2 knobs (B2/B4): global, live-reloadable, defaulting to
+        DEFAULT_SETTINGS when the `settings` table has no row yet — soft
+        migration for pre-existing DBs, no crash, no explicit ALTER needed."""
+        settings = dict(DEFAULT_SETTINGS)
+        rows = self.conn.execute("SELECT key, value FROM settings").fetchall()
+        for key, value in rows:
+            if key in settings:
+                settings[key] = float(value)
+        return settings
+
+    def save_settings(self, updates: dict) -> dict:
+        """Partial update: only known keys are persisted/changed; unknown
+        keys are ignored. Returns the full resulting settings dict."""
+        current = self.get_settings()
+        current.update({k: v for k, v in updates.items() if k in current})
+        for key, value in current.items():
+            self.conn.execute(
+                """
+                INSERT INTO settings (key, value) VALUES (?, ?)
+                ON CONFLICT(key) DO UPDATE SET value=excluded.value
+                """,
+                (key, str(value)),
+            )
+        self.conn.commit()
+        return current
 
     def get_explanation(self, guid: str) -> dict | None:
         row = self.conn.execute(

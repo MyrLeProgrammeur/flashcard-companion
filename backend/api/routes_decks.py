@@ -2,7 +2,15 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request
 
-from srs import QUALITY_AGAIN, QUALITY_EASY, QUALITY_GOOD, QUALITY_HARD, review
+from srs import (
+    QUALITY_AGAIN,
+    QUALITY_EASY,
+    QUALITY_GOOD,
+    QUALITY_HARD,
+    SrsSettings,
+    review,
+    settings_from_dict,
+)
 
 router = APIRouter()
 
@@ -18,13 +26,14 @@ def _interval_label(days: float) -> str:
     return f"{round(days / 365)} an" + ("s" if round(days / 365) > 1 else "")
 
 
-def _rating_previews(state, now: datetime) -> dict:
-    """Projected next interval per rating button, computed by srs.review itself."""
+def _rating_previews(state, now: datetime, settings: SrsSettings) -> dict:
+    """Projected next interval per rating button, computed by srs.review itself
+    (same function/settings as the real review — never duplicate SM-2 logic)."""
     return {
-        "again": _interval_label(review(state, QUALITY_AGAIN, now).interval_days),
-        "hard": _interval_label(review(state, QUALITY_HARD, now).interval_days),
-        "good": _interval_label(review(state, QUALITY_GOOD, now).interval_days),
-        "easy": _interval_label(review(state, QUALITY_EASY, now).interval_days),
+        "again": _interval_label(review(state, QUALITY_AGAIN, now, settings).interval_days),
+        "hard": _interval_label(review(state, QUALITY_HARD, now, settings).interval_days),
+        "good": _interval_label(review(state, QUALITY_GOOD, now, settings).interval_days),
+        "easy": _interval_label(review(state, QUALITY_EASY, now, settings).interval_days),
     }
 
 
@@ -57,6 +66,7 @@ def due_cards(subject: str, theme: str, request: Request, limit: int = 20):
     import apkg_reader
 
     now = datetime.now(timezone.utc)
+    settings = settings_from_dict(store.get_settings())
     cards = [
         c
         for c in apkg_reader.read_all_cards(apkg_dir)
@@ -76,7 +86,7 @@ def due_cards(subject: str, theme: str, request: Request, limit: int = 20):
             "front": c.front,
             "back": c.back,
             "note": c.note,
-            "previews": _rating_previews(store.get_state(c.guid), now),
+            "previews": _rating_previews(store.get_state(c.guid), now, settings),
         }
         for _, c in due[:limit]
     ]
@@ -133,6 +143,7 @@ def due_by_path(request: Request, path: str = "", limit: int = 50):
     import apkg_reader
 
     now = datetime.now(timezone.utc)
+    settings = settings_from_dict(store.get_settings())
 
     def in_scope(deck_name: str) -> bool:
         return not path or deck_name == path or deck_name.startswith(path + "::")
@@ -152,7 +163,7 @@ def due_by_path(request: Request, path: str = "", limit: int = 50):
             "front": c.front,
             "back": c.back,
             "note": c.note,
-            "previews": _rating_previews(store.get_state(c.guid), now),
+            "previews": _rating_previews(store.get_state(c.guid), now, settings),
         }
         for _, c in due[:limit]
     ]

@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 import apkg_reader
-from srs import review
+from srs import review, settings_from_dict
 
 router = APIRouter()
 
@@ -49,7 +49,8 @@ def post_review(guid: str, body: ReviewBody, request: Request):
 
     _find_card(apkg_dir, guid)  # 404 if the card doesn't exist
     current_state = store.get_state(guid)
-    new_state = review(current_state, body.quality, datetime.now(timezone.utc))
+    settings = settings_from_dict(store.get_settings())
+    new_state = review(current_state, body.quality, datetime.now(timezone.utc), settings)
     store.save_state(guid, new_state)
 
     return {

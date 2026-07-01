@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from openai import OpenAI
 
-from api import routes_decks, routes_explain, routes_review
+from api import routes_decks, routes_explain, routes_review, routes_settings
 from config import load_config
 from srs_store import SrsStore
 
@@ -30,6 +30,7 @@ app.state.infercom_client = OpenAI(
 app.include_router(routes_decks.router)
 app.include_router(routes_review.router)
 app.include_router(routes_explain.router)
+app.include_router(routes_settings.router)
 
 
 @app.get("/api/health")
