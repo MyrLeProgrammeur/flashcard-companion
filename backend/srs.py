@@ -7,7 +7,7 @@ the 4 graduated first-pass intervals (Again/Hard/Good/Easy) plus an Easy
 bonus multiplier for mature cards. They are persisted in the `settings`
 table (srs_store.py) and injected via SrsSettings — never hardcoded here.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import datetime, timedelta
 
 # UI rating buttons -> SM-2 quality scale (0-5)
@@ -18,12 +18,16 @@ QUALITY_EASY = 5
 
 # Single source of truth for defaults, shared by srs_store.get_settings()
 # so a fresh DB (no `settings` rows yet) reproduces this exact behavior.
+# NOTE: this dict also backs non-SM-2 knobs stored in the same `settings`
+# table (e.g. `notify_hour`, Batch 7) — not every key here is an SrsSettings
+# field, see settings_from_dict below.
 DEFAULT_SETTINGS = {
     "again_days": 0.0,
     "hard_days": 1.0,
     "good_days": 3.0,
     "easy_days": 7.0,
     "easy_bonus": 1.3,
+    "notify_hour": 9.0,
 }
 
 
@@ -37,7 +41,12 @@ class SrsSettings:
 
 
 def settings_from_dict(d: dict) -> SrsSettings:
-    return SrsSettings(**{k: d[k] for k in DEFAULT_SETTINGS if k in d})
+    """Build the SM-2-only settings object from the full settings dict.
+    Filters by SrsSettings' own fields (not DEFAULT_SETTINGS' keys), since
+    the `settings` table also holds non-SM-2 knobs (e.g. notify_hour) that
+    SrsSettings doesn't accept as constructor arguments."""
+    field_names = {f.name for f in fields(SrsSettings)}
+    return SrsSettings(**{k: d[k] for k in field_names if k in d})
 
 
 @dataclass

@@ -15,6 +15,7 @@ DEFAULT_SETTINGS = {
     "good_days": 3.0,
     "easy_days": 7.0,
     "easy_bonus": 1.3,
+    "notify_hour": 9.0,
 }
 
 
@@ -79,6 +80,47 @@ def test_settings_put_rejects_invalid_values(tmp_path, monkeypatch):
 
     resp = client.put("/api/settings", json={"easy_bonus": 0.5})
     assert resp.status_code == 400
+
+
+def test_notify_hour_put_then_get_round_trips(tmp_path, monkeypatch):
+    _, client = _make_client(tmp_path, monkeypatch)
+    put_resp = client.put("/api/settings", json={"notify_hour": 20})
+    assert put_resp.status_code == 200
+    assert put_resp.json()["notify_hour"] == 20.0
+
+    get_resp = client.get("/api/settings")
+    assert get_resp.json()["notify_hour"] == 20.0
+    # untouched SM-2 knobs keep their default alongside it
+    assert get_resp.json()["hard_days"] == 1.0
+
+
+def test_notify_hour_rejects_out_of_range(tmp_path, monkeypatch):
+    _, client = _make_client(tmp_path, monkeypatch)
+    resp = client.put("/api/settings", json={"notify_hour": 24})
+    assert resp.status_code == 400
+
+    resp = client.put("/api/settings", json={"notify_hour": -1})
+    assert resp.status_code == 400
+
+
+def test_due_count_matches_due_list_length(tmp_path, monkeypatch):
+    """/api/due/count must never diverge from /api/due (Batch 7 — shared
+    _due_cards_in_scope query, no duplicated due-computation)."""
+    main_module, client = _make_client(tmp_path, monkeypatch)
+    apkg_dir = Path(main_module.app.state.cfg["paths"]["apkg_dir"])
+    build_fixture_apkg(apkg_dir / "fixture.apkg")
+
+    due_resp = client.get("/api/due", params={"path": ""})
+    count_resp = client.get("/api/due/count")
+    assert count_resp.status_code == 200
+    assert count_resp.json() == {"due": len(due_resp.json())}
+
+
+def test_due_count_is_zero_with_no_cards(tmp_path, monkeypatch):
+    _, client = _make_client(tmp_path, monkeypatch)
+    resp = client.get("/api/due/count")
+    assert resp.status_code == 200
+    assert resp.json() == {"due": 0}
 
 
 def test_fresh_card_previews_are_4_distinct_values(tmp_path, monkeypatch):

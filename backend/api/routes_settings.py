@@ -10,6 +10,7 @@ class SettingsBody(BaseModel):
     good_days: float | None = None
     easy_days: float | None = None
     easy_bonus: float | None = None
+    notify_hour: int | None = None
 
 
 def _validate(updates: dict) -> None:
@@ -18,6 +19,8 @@ def _validate(updates: dict) -> None:
             raise HTTPException(status_code=400, detail=f"{key} must be >= 0")
     if "easy_bonus" in updates and updates["easy_bonus"] < 1:
         raise HTTPException(status_code=400, detail="easy_bonus must be >= 1")
+    if "notify_hour" in updates and not (0 <= updates["notify_hour"] <= 23):
+        raise HTTPException(status_code=400, detail="notify_hour must be between 0 and 23")
 
 
 @router.get("/api/settings")

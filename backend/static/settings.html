@@ -57,6 +57,19 @@
         </label>
       </div>
 
+      <h1 class="screen-title">Notifications</h1>
+      <p class="screen-sub">Heure du rappel quotidien s'il reste des cartes dues (Termux, local, sans Google).</p>
+
+      <div class="settings-card">
+        <label class="settings-row">
+          <span class="settings-label">Heure du rappel</span>
+          <span class="settings-input-wrap">
+            <input class="settings-input" type="number" step="1" min="0" max="23" name="notify_hour" id="notify_hour" required>
+            <span class="settings-unit">h</span>
+          </span>
+        </label>
+      </div>
+
       <button class="cta" type="submit" id="save-btn">Enregistrer</button>
       <p class="settings-status" id="status"></p>
     </form>

@@ -1,9 +1,10 @@
-/* Réglages SM-2: charge/sauvegarde les 5 knobs via GET/PUT /api/settings.
-   Champs = again_days, hard_days, good_days, easy_days, easy_bonus. */
+/* Réglages SM-2 + notifications: charge/sauvegarde les knobs via GET/PUT
+   /api/settings. Champs = again_days, hard_days, good_days, easy_days,
+   easy_bonus, notify_hour (heure du rappel quotidien Termux, Batch 7). */
 
 const el = (id) => document.getElementById(id);
 
-const FIELDS = ["again_days", "hard_days", "good_days", "easy_days", "easy_bonus"];
+const FIELDS = ["again_days", "hard_days", "good_days", "easy_days", "easy_bonus", "notify_hour"];
 
 el("back-btn").innerHTML = icon("chevronLeft");
 

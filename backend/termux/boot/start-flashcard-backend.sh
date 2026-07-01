@@ -8,5 +8,21 @@ termux-wake-lock 2>/dev/null
 cd ~/flashcard-companion/backend || exit 1
 . .venv/bin/activate
 if ! pgrep -f "bin/uvicorn main:app" >/dev/null 2>&1; then
-  exec uvicorn main:app --host 127.0.0.1 --port 8420 >~/server.log 2>&1
+  # Backgrounded (was `exec`) so the script continues past this point to
+  # also re-arm the notification job below, even on a cold first boot.
+  uvicorn main:app --host 127.0.0.1 --port 8420 >~/server.log 2>&1 &
 fi
+
+# Re-arm the daily due-card notification job (Batch 7): termux-job-scheduler
+# registrations don't survive a reboot, so re-register on every boot here,
+# alongside the backend autostart. Best-effort period (~1/day); actual
+# firing hour drifts under Doze (settled decision C3 — no strict-accuracy
+# guarantee). See notify-due.sh's header for the full scheduling caveat
+# (job-scheduler has no native wall-clock-hour trigger — this just ensures
+# it stays armed once/reboot).
+termux-job-scheduler \
+  --job-id 1001 \
+  --script ~/flashcard-companion/backend/termux/notify-due.sh \
+  --period-ms 86400000 \
+  --persisted true \
+  2>>~/server.log || true

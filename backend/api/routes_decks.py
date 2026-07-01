@@ -134,6 +134,28 @@ def deck_tree(request: Request):
     return to_list(tree, [])
 
 
+def _due_cards_in_scope(store, cards, now: datetime, path: str = "") -> list:
+    """Shared due-computation: cards from `cards` whose stored state is due
+    at `now`, scoped to `path` (empty = everything, else the exact deck or
+    any deck nested under it via `path::...`). Returns (due_at, card) pairs,
+    sorted. Both `/api/due` and `/api/due/count` go through this single loop
+    so the two can never diverge on what "due" means."""
+
+    def in_scope(deck_name: str) -> bool:
+        return not path or deck_name == path or deck_name.startswith(path + "::")
+
+    due = []
+    for card in cards:
+        if not in_scope(card.deck_name):
+            continue
+        state = store.get_state(card.guid)
+        if state.due_at is not None and state.due_at <= now:
+            due.append((state.due_at, card))
+
+    due.sort(key=lambda pair: pair[0])
+    return due
+
+
 @router.get("/api/due")
 def due_by_path(request: Request, path: str = "", limit: int = 50):
     """Due cards for a folder subtree. Empty path = everything (review all).
@@ -145,18 +167,7 @@ def due_by_path(request: Request, path: str = "", limit: int = 50):
     now = datetime.now(timezone.utc)
     settings = settings_from_dict(store.get_settings())
 
-    def in_scope(deck_name: str) -> bool:
-        return not path or deck_name == path or deck_name.startswith(path + "::")
-
-    due = []
-    for card in apkg_reader.read_all_cards(apkg_dir):
-        if not in_scope(card.deck_name):
-            continue
-        state = store.get_state(card.guid)
-        if state.due_at is not None and state.due_at <= now:
-            due.append((state.due_at, card))
-
-    due.sort(key=lambda pair: pair[0])
+    due = _due_cards_in_scope(store, apkg_reader.read_all_cards(apkg_dir), now, path)
     return [
         {
             "guid": c.guid,
@@ -167,3 +178,18 @@ def due_by_path(request: Request, path: str = "", limit: int = 50):
         }
         for _, c in due[:limit]
     ]
+
+
+@router.get("/api/due/count")
+def due_count(request: Request, path: str = ""):
+    """Total number of cards due right now (all decks by default) — for the
+    Termux daily-notification script (Batch 7). Lightweight: no card
+    payloads, just the count. Reuses `_due_cards_in_scope`, the same query
+    `/api/due` uses, so the two endpoints can never disagree."""
+    apkg_dir = request.app.state.cfg["paths"]["apkg_dir"]
+    store = request.app.state.store
+    import apkg_reader
+
+    now = datetime.now(timezone.utc)
+    due = _due_cards_in_scope(store, apkg_reader.read_all_cards(apkg_dir), now, path)
+    return {"due": len(due)}
