@@ -174,6 +174,7 @@ def due_by_path(request: Request, path: str = "", limit: int = 50):
             "front": c.front,
             "back": c.back,
             "note": c.note,
+            "subject": c.subject,
             "previews": _rating_previews(store.get_state(c.guid), now, settings),
         }
         for _, c in due[:limit]

@@ -11,6 +11,7 @@ let queue = [];
 let idx = 0;
 let flipped = false;
 let cardShownAt = 0;
+let coursesData = {}; // subject -> [{filename, rel_path}, ...], fetched once (Batch 6)
 
 /* ---------- static icons ---------- */
 el("back-btn").innerHTML = icon("chevronLeft");
@@ -20,8 +21,16 @@ el("sheet-close").innerHTML = icon("close");
 /* ---------- load queue ---------- */
 async function loadQueue() {
   el("deck-name").textContent = path ? path.split("::").pop() : "Tous les decks";
-  const res = await fetch(`/api/due?path=${encodeURIComponent(path)}&limit=50`, { cache: "no-store" });
-  queue = await res.json();
+  const [dueRes, coursesRes] = await Promise.all([
+    fetch(`/api/due?path=${encodeURIComponent(path)}&limit=50`, { cache: "no-store" }),
+    fetch("/api/courses", { cache: "no-store" }),
+  ]);
+  queue = await dueRes.json();
+  try {
+    coursesData = await coursesRes.json();
+  } catch {
+    coursesData = {};
+  }
   el("total").textContent = queue.length;
   render();
 }
@@ -54,6 +63,17 @@ function render() {
 
   el("pos").textContent = idx + 1;
   el("bar").style.width = queue.length ? `${(idx / queue.length) * 100}%` : "0%";
+
+  const sourceLink = el("source-link");
+  const matches = coursesData[c.subject];
+  if (matches && matches.length) {
+    sourceLink.href = `/pdf-viewer.html?path=${encodeURIComponent(matches[0].rel_path)}`;
+    sourceLink.innerHTML = icon("doc") + " Voir le cours source";
+    sourceLink.classList.remove("hidden");
+  } else {
+    sourceLink.classList.add("hidden");
+  }
+
   updateFoot();
 }
 
