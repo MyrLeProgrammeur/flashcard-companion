@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <title>Statistiques — Flashcard Companion</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/common.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <a class="icon-btn" href="/" aria-label="Retour" id="back-btn"></a>
+      <span class="mono">Statistiques</span>
+      <button class="theme-toggle" data-theme-icon aria-label="Thème" onclick="toggleTheme()"></button>
+    </header>
+
+    <h1 class="screen-title">Vue d'ensemble</h1>
+    <p class="screen-sub">Historique complet des révisions, jamais purgé.</p>
+
+    <div class="stats-overview" id="overview">
+      <div class="stat-card">
+        <span class="stat-value" id="stat-total">—</span>
+        <span class="stat-label">révisions</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="stat-time">—</span>
+        <span class="stat-label">temps total</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="stat-success">—</span>
+        <span class="stat-label">réussite</span>
+      </div>
+    </div>
+
+    <h2 class="section-title">Jours de révision</h2>
+    <div class="heatmap-wrap" id="heatmap-wrap">
+      <div class="heatmap" id="heatmap"></div>
+      <p class="empty-note hidden" id="heatmap-empty">Pas encore de révision enregistrée.</p>
+    </div>
+    <div class="heatmap-extremes" id="heatmap-extremes"></div>
+
+    <h2 class="section-title">Export</h2>
+    <div class="export-row">
+      <a class="export-btn" href="/api/stats/export?format=csv">CSV</a>
+      <a class="export-btn" href="/api/stats/export?format=json">JSON</a>
+    </div>
+
+    <h2 class="section-title">Par carte</h2>
+    <div class="cards-table-wrap">
+      <table class="cards-table" id="cards-table">
+        <thead>
+          <tr>
+            <th data-key="guid">Carte</th>
+            <th data-key="review_count">Révisions</th>
+            <th data-key="success_rate">Réussite</th>
+            <th data-key="avg_time_spent_ms">Tps moy.</th>
+            <th data-key="total_time_spent_ms">Tps total</th>
+            <th data-key="last_quality">Dern. note</th>
+            <th data-key="last_reviewed_at">Dernière révision</th>
+          </tr>
+        </thead>
+        <tbody id="cards-tbody"></tbody>
+      </table>
+      <p class="empty-note hidden" id="cards-empty">Aucune carte révisée pour l'instant.</p>
+    </div>
+  </div>
+
+  <script src="/stats.js" defer></script>
+</body>
+</html>
