@@ -1,0 +1,11 @@
+backend/.env
+backend/data/
+*.db
+__pycache__/
+*.pyc
+.venv/
+.directory
+
+android/.gradle/
+android/*/build/
+android/local.properties

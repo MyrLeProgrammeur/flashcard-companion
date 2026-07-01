@@ -1,0 +1,157 @@
+"""
+Companion's own SQLite state: review history (SM-2) + explain cache,
+keyed by the pipeline's stable card GUID. Lives entirely outside any
+Syncthing-watched folder — never touches the .apkg files themselves.
+"""
+import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
+
+from srs import CardState
+
+SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS card_state (
+    guid TEXT PRIMARY KEY,
+    reps INTEGER NOT NULL DEFAULT 0,
+    interval_days REAL NOT NULL DEFAULT 0,
+    ease_factor REAL NOT NULL DEFAULT 2.5,
+    due_at TEXT,
+    last_reviewed_at TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS explain_cache (
+    guid TEXT PRIMARY KEY,
+    explanation TEXT NOT NULL,
+    source_files TEXT NOT NULL,
+    generated_at TEXT NOT NULL,
+    model TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS source_match_cache (
+    theme_key TEXT PRIMARY KEY,
+    source_files TEXT NOT NULL,
+    resolved_at TEXT NOT NULL
+);
+"""
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _parse_dt(value: str | None) -> datetime | None:
+    return datetime.fromisoformat(value) if value else None
+
+
+class SrsStore:
+    def __init__(self, db_path: str | Path):
+        db_path = Path(db_path)
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        # FastAPI runs sync endpoints in a threadpool; this is a single-user
+        # local server (loopback only), so a shared connection without a lock
+        # is an acceptable MVP tradeoff.
+        self.conn = sqlite3.connect(db_path, check_same_thread=False)
+        self.conn.executescript(SCHEMA_SQL)
+        self.conn.commit()
+
+    def get_state(self, guid: str) -> CardState:
+        row = self.conn.execute(
+            "SELECT reps, interval_days, ease_factor, due_at, last_reviewed_at "
+            "FROM card_state WHERE guid = ?",
+            (guid,),
+        ).fetchone()
+        if row is None:
+            # New card: immediately due, matching Anki's "new card" queue closely
+            # enough for MVP. Use epoch rather than "now" so it's due regardless
+            # of how the caller's own "now" was captured (avoids a race where
+            # this due_at ends up a few microseconds after the caller's now).
+            return CardState(due_at=datetime.fromtimestamp(0, tz=timezone.utc))
+        reps, interval_days, ease_factor, due_at, last_reviewed_at = row
+        return CardState(
+            reps=reps,
+            interval_days=interval_days,
+            ease_factor=ease_factor,
+            due_at=_parse_dt(due_at),
+            last_reviewed_at=_parse_dt(last_reviewed_at),
+        )
+
+    def save_state(self, guid: str, state: CardState) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO card_state (guid, reps, interval_days, ease_factor, due_at,
+                                     last_reviewed_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(guid) DO UPDATE SET
+                reps=excluded.reps, interval_days=excluded.interval_days,
+                ease_factor=excluded.ease_factor, due_at=excluded.due_at,
+                last_reviewed_at=excluded.last_reviewed_at
+            """,
+            (
+                guid,
+                state.reps,
+                state.interval_days,
+                state.ease_factor,
+                state.due_at.isoformat() if state.due_at else None,
+                state.last_reviewed_at.isoformat() if state.last_reviewed_at else None,
+                _now_iso(),
+            ),
+        )
+        self.conn.commit()
+
+    def due_guids(self, now: datetime) -> set[str]:
+        rows = self.conn.execute(
+            "SELECT guid FROM card_state WHERE due_at IS NOT NULL AND due_at <= ?",
+            (now.isoformat(),),
+        ).fetchall()
+        return {r[0] for r in rows}
+
+    def get_explanation(self, guid: str) -> dict | None:
+        row = self.conn.execute(
+            "SELECT explanation, source_files, generated_at, model "
+            "FROM explain_cache WHERE guid = ?",
+            (guid,),
+        ).fetchone()
+        if row is None:
+            return None
+        explanation, source_files, generated_at, model = row
+        return {
+            "explanation": explanation,
+            "source_files": source_files.split("\x1f") if source_files else [],
+            "generated_at": generated_at,
+            "model": model,
+        }
+
+    def save_explanation(
+        self, guid: str, explanation: str, source_files: list[str], model: str
+    ) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO explain_cache (guid, explanation, source_files, generated_at, model)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(guid) DO UPDATE SET
+                explanation=excluded.explanation, source_files=excluded.source_files,
+                generated_at=excluded.generated_at, model=excluded.model
+            """,
+            (guid, explanation, "\x1f".join(source_files), _now_iso(), model),
+        )
+        self.conn.commit()
+
+    def get_source_match(self, theme_key: str) -> list[str] | None:
+        row = self.conn.execute(
+            "SELECT source_files FROM source_match_cache WHERE theme_key = ?",
+            (theme_key,),
+        ).fetchone()
+        if row is None:
+            return None
+        return row[0].split("\x1f") if row[0] else []
+
+    def save_source_match(self, theme_key: str, source_files: list[str]) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO source_match_cache (theme_key, source_files, resolved_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(theme_key) DO UPDATE SET
+                source_files=excluded.source_files, resolved_at=excluded.resolved_at
+            """,
+            (theme_key, "\x1f".join(source_files), _now_iso()),
+        )
+        self.conn.commit()

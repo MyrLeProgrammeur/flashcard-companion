@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>flashcard-companion</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <h1>Decks</h1>
+  <ul class="deck-list" id="deck-list"></ul>
+
+  <script>
+    async function loadDecks() {
+      const res = await fetch("/api/decks");
+      const tree = await res.json();
+      const list = document.getElementById("deck-list");
+      list.innerHTML = "";
+
+      for (const subject of Object.keys(tree).sort()) {
+        for (const theme of Object.keys(tree[subject]).sort()) {
+          const { card_count, due_count } = tree[subject][theme];
+          const li = document.createElement("li");
+          const a = document.createElement("a");
+          a.href = `/review.html?subject=${encodeURIComponent(subject)}&theme=${encodeURIComponent(theme)}`;
+          a.innerHTML = `<span>${subject} — ${theme || "(général)"} <small>(${card_count})</small></span>` +
+            (due_count > 0 ? `<span class="due-badge">${due_count}</span>` : "");
+          li.appendChild(a);
+          list.appendChild(li);
+        }
+      }
+
+      if (list.children.length === 0) {
+        list.innerHTML = "<li>Aucun deck trouvé — vérifie apkg_dir dans config.yaml.</li>";
+      }
+    }
+
+    loadDecks();
+  </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+paths:
+  # Dossier où le pipeline PC écrit les .apkg (synchronisé via Syncthing).
+  # Chemin on-device à vérifier en session physique (voir plan §4 risque #1) —
+  # placeholder aligné sur la convention du pipeline en attendant.
+  apkg_dir: "~/storage/shared/Flashcards"
+
+  # Dossier des PDF de cours sources, synchronisé via Syncthing (même remarque).
+  pdf_dir: "~/storage/shared/Cours"
+
+  # État propre de l'app (SRS, cache d'explications, matching PDF résolu).
+  # Volontairement HORS de tout dossier Syncthing.
+  data_dir: "~/flashcard-companion/data"
+
+infercom:
+  base_url: "https://api.infercom.ai/v1"
+  explain_model: "DeepSeek-V3.1"
+
+server:
+  host: "127.0.0.1"
+  port: 8420
+
+explain:
+  max_pdf_context_chars: 15000

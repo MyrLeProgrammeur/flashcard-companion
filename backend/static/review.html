@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Review — flashcard-companion</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <p><a href="/index.html">&larr; Decks</a></p>
+  <h1 id="deck-title"></h1>
+
+  <div class="card-box" id="card-box">
+    <div id="front"></div>
+    <div id="back-section" class="back hidden">
+      <div id="back"></div>
+      <div id="note" class="note"></div>
+    </div>
+    <div id="explanation-section" class="explanation hidden">
+      <div id="explanation-text"></div>
+      <div id="explanation-sources" class="sources"></div>
+    </div>
+  </div>
+
+  <div class="action-buttons">
+    <button id="btn-show">Voir la réponse</button>
+    <button id="btn-explain">Détaille / explique en profondeur</button>
+  </div>
+
+  <div class="rating-buttons hidden" id="rating-buttons">
+    <button id="btn-again">Again</button>
+    <button id="btn-hard">Hard</button>
+    <button id="btn-good">Good</button>
+    <button id="btn-easy">Easy</button>
+  </div>
+
+  <p id="empty-state" class="hidden">Rien à réviser dans ce deck pour le moment.</p>
+
+  <script src="/app.js"></script>
+</body>
+</html>
