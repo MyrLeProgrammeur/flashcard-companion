@@ -35,6 +35,17 @@ CREATE TABLE IF NOT EXISTS source_match_cache (
     source_files TEXT NOT NULL,
     resolved_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS review_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guid TEXT,
+    reviewed_at TEXT,
+    quality INTEGER,
+    time_spent_ms INTEGER,
+    prev_interval_days REAL,
+    new_interval_days REAL,
+    prev_reps INTEGER,
+    new_reps INTEGER
+);
 """
 
 
@@ -97,6 +108,38 @@ class SrsStore:
                 state.due_at.isoformat() if state.due_at else None,
                 state.last_reviewed_at.isoformat() if state.last_reviewed_at else None,
                 _now_iso(),
+            ),
+        )
+        self.conn.commit()
+
+    def log_review(
+        self,
+        guid: str,
+        quality: int,
+        time_spent_ms: int | None,
+        prev_interval_days: float,
+        new_interval_days: float,
+        prev_reps: int,
+        new_reps: int,
+    ) -> None:
+        """Append-only review history (Batch 4 stats foundation). Never
+        UPDATE/DELETE this table — card_state stays the sole mutable state."""
+        self.conn.execute(
+            """
+            INSERT INTO review_log (guid, reviewed_at, quality, time_spent_ms,
+                                     prev_interval_days, new_interval_days,
+                                     prev_reps, new_reps)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                guid,
+                _now_iso(),
+                quality,
+                time_spent_ms,
+                prev_interval_days,
+                new_interval_days,
+                prev_reps,
+                new_reps,
             ),
         )
         self.conn.commit()

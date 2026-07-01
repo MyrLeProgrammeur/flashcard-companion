@@ -37,6 +37,7 @@ def get_card(guid: str, request: Request):
 
 class ReviewBody(BaseModel):
     quality: int
+    time_spent_ms: int | None = None
 
 
 @router.post("/api/cards/{guid}/review")
@@ -52,6 +53,15 @@ def post_review(guid: str, body: ReviewBody, request: Request):
     settings = settings_from_dict(store.get_settings())
     new_state = review(current_state, body.quality, datetime.now(timezone.utc), settings)
     store.save_state(guid, new_state)
+    store.log_review(
+        guid,
+        body.quality,
+        body.time_spent_ms,
+        current_state.interval_days,
+        new_state.interval_days,
+        current_state.reps,
+        new_state.reps,
+    )
 
     return {
         "guid": guid,

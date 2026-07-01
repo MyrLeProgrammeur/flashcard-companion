@@ -10,6 +10,7 @@ const el = (id) => document.getElementById(id);
 let queue = [];
 let idx = 0;
 let flipped = false;
+let cardShownAt = 0;
 
 /* ---------- static icons ---------- */
 el("back-btn").innerHTML = icon("chevronLeft");
@@ -31,6 +32,7 @@ function render() {
   flipped = false;
   el("flip").classList.remove("flipped");
   const c = queue[idx];
+  cardShownAt = Date.now();
 
   el("front").textContent = c.front;
   el("back").innerHTML = c.back; // pipeline fields may carry simple markup
@@ -82,11 +84,12 @@ el("flip").addEventListener("click", () => {
 async function rate(quality) {
   const c = queue[idx];
   if (!c) return;
+  const time_spent_ms = cardShownAt ? Date.now() - cardShownAt : null;
   try {
     await fetch(`/api/cards/${c.guid}/review`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quality }),
+      body: JSON.stringify({ quality, time_spent_ms }),
     });
   } catch { /* offline handled by poll */ }
   idx += 1;
