@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
   <title>Cours — Flashcard Companion</title>
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/vendor/katex/katex.min.css">
+  <script src="/vendor/katex/katex.min.js" defer></script>
+  <script src="/vendor/katex/contrib/auto-render.min.js" defer></script>
   <script src="/common.js" defer></script>
 </head>
 <body>
@@ -18,6 +21,7 @@
     <div class="pdf-viewport" id="pdf-viewport">
       <canvas id="pdf-canvas"></canvas>
       <p class="empty-note hidden" id="pdf-status"></p>
+      <button class="pdf-help-fab" id="pdf-help-fab" aria-label="Besoin d'aide"></button>
     </div>
 
     <div class="pdf-nav">
@@ -25,6 +29,24 @@
       <span class="mono" id="page-indicator">— / —</span>
       <button class="pdf-nav-btn" id="next-btn" aria-label="Page suivante" disabled></button>
     </div>
+  </div>
+
+  <!-- "besoin d'aide" sheet (Batch 5) — reuses review.html's sheet pattern -->
+  <div class="sheet-overlay" id="help-sheet-overlay"></div>
+  <div class="sheet" id="help-sheet">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head">
+      <h2>Besoin d'aide</h2>
+      <button class="sheet-close" id="help-sheet-close" aria-label="Fermer"></button>
+    </div>
+    <div class="sheet-scroll">
+      <div class="md" id="help-answer"></div>
+    </div>
+    <form class="pdf-help-form" id="pdf-help-form">
+      <textarea id="pdf-help-question" rows="2" placeholder="Pose une question sur ce cours…"></textarea>
+      <button class="pdf-help-submit" id="pdf-help-submit" type="submit"></button>
+    </form>
+    <div class="sheet-foot" id="help-sheet-foot"></div>
   </div>
 
   <script type="module" src="/pdf-viewer.js"></script>

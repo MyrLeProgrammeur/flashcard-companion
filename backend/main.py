@@ -16,6 +16,7 @@ from api import (
     routes_exams,
     routes_explain,
     routes_pdf,
+    routes_pdf_help,
     routes_review,
     routes_settings,
     routes_stats,
@@ -42,6 +43,7 @@ app.include_router(routes_settings.router)
 app.include_router(routes_stats.router)
 app.include_router(routes_exams.router)
 app.include_router(routes_pdf.router)
+app.include_router(routes_pdf_help.router)
 
 
 @app.get("/api/health")

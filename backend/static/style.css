@@ -622,6 +622,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .pdf-app { max-width: 900px; padding: 0 14px; }
 
 .pdf-viewport {
+  position: relative;
   flex: 1;
   display: flex;
   align-items: flex-start;
@@ -653,3 +654,36 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 .pdf-nav-btn:active { background: var(--accent); color: var(--bg); }
 .pdf-nav-btn[disabled] { opacity: .35; pointer-events: none; }
+
+/* floating "besoin d'aide" button (Batch 5) */
+.pdf-help-fab {
+  position: absolute;
+  right: 20px; bottom: 20px;
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent); color: var(--bg);
+  box-shadow: var(--card-shadow);
+  z-index: 5;
+}
+.pdf-help-fab:active { filter: brightness(.94); }
+
+.pdf-help-form {
+  display: flex; gap: 10px;
+  padding: 0 22px 14px;
+  flex: none;
+}
+.pdf-help-form textarea {
+  flex: 1; resize: none;
+  font-family: var(--font-sans); font-size: 14.5px;
+  padding: 10px 12px; border-radius: 12px;
+  border: 1.4px solid var(--hairline);
+  background: var(--surface-sunk); color: var(--ink);
+}
+.pdf-help-submit {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; border-radius: 12px;
+  background: var(--accent); color: var(--bg);
+  flex: none;
+}
+.pdf-help-submit[disabled] { opacity: .5; pointer-events: none; }

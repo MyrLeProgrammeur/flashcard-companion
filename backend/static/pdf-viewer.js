@@ -19,6 +19,9 @@ const nextBtn = el("next-btn");
 el("back-btn").innerHTML = icon("chevronLeft");
 prevBtn.innerHTML = icon("chevronLeft");
 nextBtn.innerHTML = icon("chevronRight");
+el("pdf-help-fab").innerHTML = icon("spark");
+el("help-sheet-close").innerHTML = icon("close");
+el("pdf-help-submit").innerHTML = icon("spark");
 
 const params = new URLSearchParams(window.location.search);
 const relPath = params.get("path") || "";
@@ -105,5 +108,59 @@ async function load() {
     showStatus("Impossible de charger ce PDF.");
   }
 }
+
+/* ---------- "besoin d'aide" sheet (Batch 5) ---------- */
+function openHelpSheet() {
+  el("help-sheet-overlay").classList.add("open");
+  el("help-sheet").classList.add("open");
+}
+function closeHelpSheet() {
+  el("help-sheet-overlay").classList.remove("open");
+  el("help-sheet").classList.remove("open");
+}
+el("pdf-help-fab").addEventListener("click", () => {
+  openHelpSheet();
+  el("pdf-help-question").focus();
+});
+el("help-sheet-close").addEventListener("click", closeHelpSheet);
+el("help-sheet-overlay").addEventListener("click", closeHelpSheet);
+
+function showHelpSkeleton() {
+  el("help-sheet-foot").textContent = "";
+  el("help-answer").innerHTML =
+    '<div class="skeleton"><div class="sk-line"></div><div class="sk-line"></div><div class="sk-line short"></div></div>';
+}
+
+el("pdf-help-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const question = el("pdf-help-question").value.trim();
+  if (!question || !relPath) return;
+
+  const submitBtn = el("pdf-help-submit");
+  submitBtn.disabled = true;
+  showHelpSkeleton();
+  const t0 = performance.now();
+  try {
+    const res = await fetch("/api/courses/help", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rel_path: relPath, question }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const ms = Math.round(performance.now() - t0);
+
+    el("help-answer").innerHTML = renderMarkdown(data.answer || "");
+    renderMath(el("help-answer"));
+    el("help-sheet-foot").textContent =
+      `${data.model || "modèle"} · ${data.cached ? "en cache" : "généré à l'instant"} · ${ms} ms`;
+  } catch {
+    el("help-answer").innerHTML =
+      "<p>Impossible d'obtenir une réponse. Vérifie que le backend et la clé Infercom sont OK.</p>";
+    el("help-sheet-foot").textContent = "erreur";
+  } finally {
+    submitBtn.disabled = false;
+  }
+});
 
 load();
