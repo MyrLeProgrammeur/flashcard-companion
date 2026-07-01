@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Required to reach the local backend on 127.0.0.1:8420 (health check +
+         WebView). Without it the app can open no socket at all, even loopback. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- Best-effort auto-launch of the Termux backend via Termux:API's
          RUN_COMMAND intent (plan §3.3 step 2). Silently no-ops if
          Termux:API isn't installed/granted — manual start.sh always works. -->

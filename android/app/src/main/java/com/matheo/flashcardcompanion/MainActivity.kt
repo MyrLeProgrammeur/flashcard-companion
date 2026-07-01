@@ -3,28 +3,42 @@ package com.matheo.flashcardcompanion
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.view.ViewGroup
+import android.view.Gravity
+import android.view.View
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
-import kotlin.concurrent.thread
 
 private const val BACKEND_URL = "http://127.0.0.1:8420/"
 private const val HEALTH_URL = "http://127.0.0.1:8420/api/health"
 private const val HEALTH_TIMEOUT_MS = 1500
 
+// Fast, network-free launcher (venv + wakelock + uvicorn, with a no-double-start
+// guard). Same script Termux:Boot runs at boot.
+private const val START_SCRIPT =
+    "/data/data/com.termux/files/home/.termux/boot/start-flashcard-backend.sh"
+
+// After triggering the backend, poll health ~1s * N before giving up.
+private const val AUTOSTART_ATTEMPTS = 20
+
 class MainActivity : Activity() {
 
     private lateinit var webView: WebView
-    private lateinit var fallbackScreen: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Best-effort: make sure we hold Termux's RUN_COMMAND permission so the
+        // auto-start can reach Termux. Silently no-ops if not grantable.
+        try {
+            requestPermissions(arrayOf("com.termux.permission.RUN_COMMAND"), 0)
+        } catch (_: Exception) { /* not runtime-grantable — fallback covers it */ }
 
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
@@ -32,72 +46,84 @@ class MainActivity : Activity() {
             webViewClient = WebViewClient()
         }
 
-        fallbackScreen = buildFallbackScreen()
-
-        setContentView(webView)
-        checkHealthAndLoad()
+        setContentView(loadingScreen("Connexion au backend…"))
+        bootFlow()
     }
 
-    private fun buildFallbackScreen(): LinearLayout {
+    /** Health check; if down, trigger the Termux backend once, poll until it's
+     *  up, then load the UI. Falls back to a manual screen if it never comes up. */
+    private fun bootFlow() {
+        runOnUiThread { setContentView(loadingScreen("Connexion au backend…")) }
+        Thread {
+            if (isBackendHealthy()) { showWebView(); return@Thread }
+
+            runOnUiThread { setContentView(loadingScreen("Démarrage du backend…")) }
+            tryRunCommand()
+
+            var attempts = AUTOSTART_ATTEMPTS
+            while (attempts-- > 0) {
+                try { Thread.sleep(1000) } catch (_: InterruptedException) {}
+                if (isBackendHealthy()) { showWebView(); return@Thread }
+            }
+            runOnUiThread { setContentView(fallbackScreen()) }
+        }.start()
+    }
+
+    private fun showWebView() {
+        runOnUiThread {
+            setContentView(webView)
+            webView.loadUrl(BACKEND_URL)
+        }
+    }
+
+    private fun loadingScreen(msg: String): View {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(48, 48, 48, 48)
+        }
+        layout.addView(ProgressBar(this))
+        layout.addView(TextView(this).apply {
+            text = msg
+            textSize = 15f
+            gravity = Gravity.CENTER
+            setPadding(0, 40, 0, 0)
+        })
+        return layout
+    }
+
+    private fun fallbackScreen(): View {
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(48, 96, 48, 48)
         }
-        val message = TextView(this).apply {
-            text = "Backend introuvable.\n\n" +
+        layout.addView(TextView(this).apply {
+            text = "Le backend n'a pas démarré automatiquement.\n\n" +
                 "Ouvre Termux et lance :\n" +
-                "~/flashcard-companion/backend/termux/start.sh\n\n" +
+                "bash ~/flashcard-companion/backend/termux/start.sh\n\n" +
                 "Puis appuie sur Réessayer."
             textSize = 16f
-        }
-        val retryButton = Button(this).apply {
+        })
+        layout.addView(Button(this).apply {
             text = "Réessayer"
-            setOnClickListener { checkHealthAndLoad() }
-        }
-        val launchButton = Button(this).apply {
-            text = "Tenter le lancement auto (Termux:API)"
-            setOnClickListener {
-                tryRunCommand()
-                checkHealthAndLoad()
-            }
-        }
-        layout.addView(message)
-        layout.addView(retryButton)
-        layout.addView(launchButton)
+            setOnClickListener { bootFlow() }
+        })
         return layout
     }
 
-    /** Best-effort convenience only — silently no-ops if Termux:API isn't
-     * installed or hasn't granted RUN_COMMAND. Manual start.sh (or the
-     * Retry button above) is the guaranteed path. */
+    /** Ask Termux to run the backend launcher. Needs allow-external-apps=true in
+     *  termux.properties and the RUN_COMMAND permission (both set up on-device). */
     private fun tryRunCommand() {
         try {
             val intent = Intent().apply {
                 setClassName("com.termux", "com.termux.app.RunCommandService")
                 action = "com.termux.RUN_COMMAND"
-                putExtra(
-                    "com.termux.RUN_COMMAND_PATH",
-                    "/data/data/com.termux/files/home/flashcard-companion/backend/termux/start.sh"
-                )
+                putExtra("com.termux.RUN_COMMAND_PATH", START_SCRIPT)
                 putExtra("com.termux.RUN_COMMAND_BACKGROUND", true)
             }
             startService(intent)
         } catch (_: Exception) {
-            // Termux:API absent/not granted — no-op, user falls back to manual start.
-        }
-    }
-
-    private fun checkHealthAndLoad() {
-        thread {
-            val healthy = isBackendHealthy()
-            runOnUiThread {
-                if (healthy) {
-                    setContentView(webView)
-                    webView.loadUrl(BACKEND_URL)
-                } else {
-                    setContentView(fallbackScreen)
-                }
-            }
+            // Termux absent / not granted — the fallback screen handles it.
         }
     }
 
