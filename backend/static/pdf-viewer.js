@@ -100,7 +100,7 @@ async function load() {
   showStatus(t("pdf.loading"));
   try {
     const url = `/api/courses/file?path=${encodeURIComponent(relPath)}`;
-    const loadingTask = pdfjsLib.getDocument(url);
+    const loadingTask = pdfjsLib.getDocument({ url });
     pdfDoc = await loadingTask.promise;
     hideStatus();
     await renderPage(1);
