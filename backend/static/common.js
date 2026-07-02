@@ -85,11 +85,11 @@ function buildMenu() {
   ).join("");
 
   const backdrop = document.createElement("div");
-  backdrop.className = "menu-backdrop hidden";
+  backdrop.className = "menu-backdrop";
   backdrop.id = "menu-backdrop";
 
   const sheet = document.createElement("nav");
-  sheet.className = "menu-sheet hidden";
+  sheet.className = "menu-sheet";
   sheet.id = "app-menu";
   sheet.innerHTML =
     `<div class="menu-head"><span class="mono">${t("nav.menu")}</span>` +
@@ -105,7 +105,7 @@ function buildMenu() {
   document.body.appendChild(sheet);
   applyTheme(currentTheme()); // paint the menu's theme icon
 
-  const close = () => { sheet.classList.add("hidden"); backdrop.classList.add("hidden"); };
+  const close = () => { sheet.classList.remove("open"); backdrop.classList.remove("open"); };
   backdrop.addEventListener("click", close);
   sheet.querySelector("#menu-close").addEventListener("click", close);
   sheet.querySelector("#menu-theme").addEventListener("click", toggleTheme);
@@ -122,8 +122,8 @@ function initMenu() {
   mount.innerHTML =
     `<button class="menu-btn icon-btn" id="menu-open" aria-label="${t("nav.menu")}">${icon("menu")}</button>`;
   mount.querySelector("#menu-open").addEventListener("click", () => {
-    document.getElementById("app-menu").classList.remove("hidden");
-    document.getElementById("menu-backdrop").classList.remove("hidden");
+    document.getElementById("app-menu").classList.add("open");
+    document.getElementById("menu-backdrop").classList.add("open");
   });
 }
 

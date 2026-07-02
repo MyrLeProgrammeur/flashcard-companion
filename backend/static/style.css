@@ -133,6 +133,69 @@ body {
 
 button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 
+/* ---------- global tap/press feel ---------- */
+
+button,
+a,
+.deck-row,
+.menu-item,
+.menu-lang-opt,
+.cta,
+.icon-btn,
+.theme-toggle,
+.health-pill,
+.crumb,
+.explain-btn,
+.source-link,
+.export-btn,
+.rate,
+.pdf-help-fab,
+.pdf-help-submit,
+.card-face {
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease,
+    box-shadow .15s ease, opacity .15s ease, transform .12s ease;
+}
+
+button:active,
+.deck-row:active,
+.menu-item:active,
+.cta:active,
+.icon-btn:active,
+.theme-toggle:active,
+.explain-btn:active,
+.export-btn:active,
+.source-link:active,
+.pdf-help-fab:active,
+.pdf-help-submit:active,
+.rate:active {
+  transform: scale(.97);
+}
+
+.crumb:active { transform: scale(.96); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: .001ms !important;
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  button:active,
+  .deck-row:active,
+  .menu-item:active,
+  .cta:active,
+  .icon-btn:active,
+  .theme-toggle:active,
+  .explain-btn:active,
+  .export-btn:active,
+  .source-link:active,
+  .pdf-help-fab:active,
+  .pdf-help-submit:active,
+  .rate:active,
+  .crumb:active {
+    transform: none !important;
+  }
+}
+
 /* ---------- header + health pill ---------- */
 
 .app-header {
@@ -178,16 +241,22 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .menu-backdrop {
   position: fixed; inset: 0; z-index: 40;
   background: rgba(0, 0, 0, .38);
+  opacity: 0; visibility: hidden;
+  transition: opacity .22s ease, visibility .22s ease;
 }
+.menu-backdrop.open { opacity: 1; visibility: visible; }
 .menu-sheet {
   position: fixed; top: 0; right: 0; z-index: 50;
   width: min(82vw, 300px); height: 100dvh;
   background: var(--surface);
   box-shadow: var(--sheet-shadow);
-  padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+  padding: calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));
   display: flex; flex-direction: column; gap: 2px;
   overflow-y: auto;
+  transform: translateX(100%); visibility: hidden;
+  transition: transform .24s cubic-bezier(.4, 0, .2, 1), visibility .24s;
 }
+.menu-sheet.open { transform: translateX(0); visibility: visible; }
 .menu-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 6px 6px 10px;
@@ -680,30 +749,25 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   overflow: auto;
   background: var(--bg-canvas);
   border-radius: 12px;
-  padding: 10px;
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
   min-height: 0;
 }
-.pdf-viewport canvas { max-width: 100%; height: auto; box-shadow: var(--card-shadow); }
 
-.pdf-nav {
+.pdf-pages {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 20px;
-  padding: 14px 0 20px;
+  gap: 14px;
+  width: 100%;
+  padding-bottom: 6px;
 }
-
-.pdf-nav-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  color: var(--ink);
-  background: var(--accent-soft);
+.pdf-pages canvas {
+  max-width: 100%;
+  height: auto;
+  background: var(--surface);
+  box-shadow: var(--card-shadow);
+  border-radius: 4px;
 }
-.pdf-nav-btn:active { background: var(--accent); color: var(--bg); }
-.pdf-nav-btn[disabled] { opacity: .35; pointer-events: none; }
 
 /* floating "besoin d'aide" button (Batch 5) */
 .pdf-help-fab {
@@ -717,7 +781,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   z-index: 5;
 }
 .pdf-help-fab:active { filter: brightness(.94); }
-.pdf-help-fab svg { width: 28px; height: 28px; }
+.pdf-help-fab svg { width: 32px; height: 32px; transform: translateY(2px); }
 
 .pdf-help-form {
   display: flex; gap: 10px;
