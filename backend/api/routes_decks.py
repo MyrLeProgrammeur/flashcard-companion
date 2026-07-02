@@ -120,15 +120,40 @@ def deck_tree(request: Request):
         for name in sorted(children):
             node = children[name]
             path = prefix + [name]
-            out.append(
-                {
-                    "name": name,
-                    "path": "::".join(path),
-                    "card_count": node["card_count"],
-                    "due_count": node["due_count"],
-                    "children": to_list(node["children"], path),
-                }
-            )
+            kids = to_list(node["children"], path)
+            entry = {
+                "name": name,
+                "path": "::".join(path),
+                "card_count": node["card_count"],
+                "due_count": node["due_count"],
+                "children": kids,
+            }
+            out.append(entry)
+
+            # This node has cards of its own (deck_name ends here) *and*
+            # sub-decks. card_count/due_count already aggregate the full
+            # subtree, so the remainder after subtracting the children's
+            # totals is exactly the count of cards attached directly to
+            # this deck. Expose them as a synthetic leaf row so they stay
+            # reachable — otherwise only the sub-decks show up and the
+            # direct cards vanish from the UI. Its `path` is the parent's
+            # own path, so reviewing it uses the same prefix-scoped query
+            # as the parent and necessarily pulls in the sub-decks too;
+            # there is no backend concept of "this deck, no descendants".
+            if kids:
+                direct_cards = node["card_count"] - sum(k["card_count"] for k in kids)
+                if direct_cards > 0:
+                    direct_due = node["due_count"] - sum(k["due_count"] for k in kids)
+                    entry["children"].append(
+                        {
+                            "name": "",
+                            "is_direct": True,
+                            "path": "::".join(path),
+                            "card_count": direct_cards,
+                            "due_count": direct_due,
+                            "children": [],
+                        }
+                    )
         return out
 
     return to_list(tree, [])

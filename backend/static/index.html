@@ -100,7 +100,12 @@
           const s = document.createElement("span");
           s.className = "crumb";
           s.textContent = label;
-          s.onclick = () => { stack = stack.slice(0, depth); renderLevel(); };
+          s.onclick = () => {
+            const newStack = stack.slice(0, depth);
+            history.pushState({ stack: newStack }, "", location.href);
+            stack = newStack;
+            renderLevel();
+          };
           return s;
         };
         crumbs.appendChild(mk(t("home.crumbRoot"), 0));
@@ -136,13 +141,19 @@
         row.className = "deck-row" + (n.due_count === 0 ? " done" : "");
         if (hasKids) {
           row.type = "button";
-          row.onclick = () => { stack.push(n.name); renderLevel(); };
+          row.onclick = () => {
+            const newStack = stack.concat(n.name);
+            history.pushState({ stack: newStack }, "", location.href);
+            stack = newStack;
+            renderLevel();
+          };
         } else {
           row.href = `/review.html?path=${encodeURIComponent(n.path)}`;
         }
+        const label = n.is_direct ? t("home.directCards") : n.name;
         row.innerHTML =
-          `<span class="deck-glyph">${glyphFor(n.name)}</span>` +
-          `<span class="deck-main"><span class="deck-name">${n.name}</span>` +
+          `<span class="deck-glyph">${n.is_direct ? "•" : glyphFor(n.name)}</span>` +
+          `<span class="deck-main"><span class="deck-name">${label}</span>` +
           `<span class="deck-meta">${t("home.cardCount", {n: n.card_count})}${n.due_count === 0 ? t("home.upToDate") : ""}</span></span>` +
           (n.due_count > 0
             ? `<span class="deck-badge">${n.due_count}</span>`
@@ -163,8 +174,16 @@
     async function loadTree() {
       TREE = await (await fetch("/api/tree", { cache: "no-store" })).json();
       stack = [];
+      history.replaceState({ stack: [] }, "", location.href);
       renderLevel();
     }
+
+    window.addEventListener("popstate", (event) => {
+      if (event.state && event.state.stack) {
+        stack = event.state.stack;
+        renderLevel();
+      }
+    });
 
     window.addEventListener("DOMContentLoaded", () => {
       document.getElementById("off-vignette").innerHTML = icon("serverOff");

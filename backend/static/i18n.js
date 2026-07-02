@@ -54,6 +54,7 @@ const I18N = {
     "home.upToDate": " · à jour",
     "home.reviewAll": "Réviser tout",
     "home.reviewScoped": "Réviser · {name}",
+    "home.directCards": "Cartes directes",
     // ---- offline screen ----
     "offline.title": "Backend hors ligne",
     "offline.desc": "Le serveur local ne répond pas sur",
@@ -177,6 +178,7 @@ const I18N = {
     "home.upToDate": " · up to date",
     "home.reviewAll": "Review all",
     "home.reviewScoped": "Review · {name}",
+    "home.directCards": "Direct cards",
     "offline.title": "Backend offline",
     "offline.desc": "The local server is not responding on",
     "offline.restartHead": "To restart",
