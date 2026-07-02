@@ -9,26 +9,27 @@
   <link rel="stylesheet" href="/vendor/katex/katex.min.css">
   <script src="/vendor/katex/katex.min.js" defer></script>
   <script src="/vendor/katex/contrib/auto-render.min.js" defer></script>
+  <script src="/i18n.js" defer></script>
   <script src="/common.js" defer></script>
 </head>
 <body>
   <div class="app pdf-app">
     <header class="app-header">
-      <a class="icon-btn" href="/courses.html" aria-label="Retour" id="back-btn"></a>
-      <span class="mono" id="pdf-title">Cours</span>
-      <button class="theme-toggle" data-theme-icon aria-label="Thème" onclick="toggleTheme()"></button>
+      <a class="icon-btn" href="/courses.html" aria-label="Retour" data-i18n-attr="aria-label:common.back" id="back-btn"></a>
+      <span class="mono" id="pdf-title" data-i18n="nav.courses">Cours</span>
+      <div id="menu-mount"></div>
     </header>
 
     <div class="pdf-viewport" id="pdf-viewport">
       <canvas id="pdf-canvas"></canvas>
       <p class="empty-note hidden" id="pdf-status"></p>
-      <button class="pdf-help-fab" id="pdf-help-fab" aria-label="Besoin d'aide"></button>
+      <button class="pdf-help-fab" id="pdf-help-fab" aria-label="Besoin d'aide" data-i18n-attr="aria-label:pdf.helpFab"></button>
     </div>
 
     <div class="pdf-nav">
-      <button class="pdf-nav-btn" id="prev-btn" aria-label="Page précédente" disabled></button>
+      <button class="pdf-nav-btn" id="prev-btn" aria-label="Page précédente" data-i18n-attr="aria-label:pdf.prevPage" disabled></button>
       <span class="mono" id="page-indicator">— / —</span>
-      <button class="pdf-nav-btn" id="next-btn" aria-label="Page suivante" disabled></button>
+      <button class="pdf-nav-btn" id="next-btn" aria-label="Page suivante" data-i18n-attr="aria-label:pdf.nextPage" disabled></button>
     </div>
   </div>
 
@@ -37,14 +38,14 @@
   <div class="sheet" id="help-sheet">
     <div class="sheet-grab"></div>
     <div class="sheet-head">
-      <h2>Besoin d'aide</h2>
-      <button class="sheet-close" id="help-sheet-close" aria-label="Fermer"></button>
+      <h2 data-i18n="pdf.helpFab">Besoin d'aide</h2>
+      <button class="sheet-close" id="help-sheet-close" aria-label="Fermer" data-i18n-attr="aria-label:common.close"></button>
     </div>
     <div class="sheet-scroll">
       <div class="md" id="help-answer"></div>
     </div>
     <form class="pdf-help-form" id="pdf-help-form">
-      <textarea id="pdf-help-question" rows="2" placeholder="Pose une question sur ce cours…"></textarea>
+      <textarea id="pdf-help-question" rows="2" placeholder="Pose une question sur ce cours…" data-i18n-attr="placeholder:pdf.askPlaceholder"></textarea>
       <button class="pdf-help-submit" id="pdf-help-submit" type="submit"></button>
     </form>
     <div class="sheet-foot" id="help-sheet-foot"></div>

@@ -27,10 +27,10 @@ const params = new URLSearchParams(window.location.search);
 const relPath = params.get("path") || "";
 
 function filenameFromPath(path) {
-  if (!path) return "Cours";
+  if (!path) return t("nav.courses");
   // URLSearchParams.get() already decodes the query value once.
   const base = path.split("/").pop();
-  return base || "Cours";
+  return base || t("nav.courses");
 }
 
 el("pdf-title").textContent = filenameFromPath(relPath);
@@ -94,10 +94,10 @@ window.addEventListener("resize", () => {
 
 async function load() {
   if (!relPath) {
-    showStatus("Aucun cours spécifié.");
+    showStatus(t("pdf.noCourse"));
     return;
   }
-  showStatus("Chargement du PDF…");
+  showStatus(t("pdf.loading"));
   try {
     const url = `/api/courses/file?path=${encodeURIComponent(relPath)}`;
     const loadingTask = pdfjsLib.getDocument(url);
@@ -105,7 +105,7 @@ async function load() {
     hideStatus();
     await renderPage(1);
   } catch (e) {
-    showStatus("Impossible de charger ce PDF.");
+    showStatus(t("pdf.loadError"));
   }
 }
 
@@ -144,7 +144,7 @@ el("pdf-help-form").addEventListener("submit", async (e) => {
     const res = await fetch("/api/courses/help", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rel_path: relPath, question }),
+      body: JSON.stringify({ rel_path: relPath, question, lang: getLang() }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -153,10 +153,10 @@ el("pdf-help-form").addEventListener("submit", async (e) => {
     el("help-answer").innerHTML = renderMarkdown(data.answer || "");
     renderMath(el("help-answer"));
     el("help-sheet-foot").textContent =
-      `${data.model || "modèle"} · ${data.cached ? "en cache" : "généré à l'instant"} · ${ms} ms`;
+      `${data.model || t("pdf.modelFallback")} · ${data.cached ? t("pdf.cached") : t("pdf.freshGen")} · ${ms} ms`;
   } catch {
     el("help-answer").innerHTML =
-      "<p>Impossible d'obtenir une réponse. Vérifie que le backend et la clé Infercom sont OK.</p>";
+      `<p>${t("pdf.helpError")}</p>`;
     el("help-sheet-foot").textContent = "erreur";
   } finally {
     submitBtn.disabled = false;

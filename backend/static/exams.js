@@ -77,7 +77,7 @@ el("exam-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const status = el("form-status");
   status.classList.remove("error", "ok");
-  status.textContent = "Ajout…";
+  status.textContent = t("exams.adding");
 
   const body = {
     deck_path: el("deck_path").value.trim(),
@@ -91,12 +91,12 @@ el("exam-form").addEventListener("submit", async (e) => {
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error("bad status");
-    status.textContent = "Ajouté.";
+    status.textContent = t("exams.added");
     status.classList.add("ok");
     el("exam-form").reset();
     loadExams();
   } catch {
-    status.textContent = "Échec de l'ajout.";
+    status.textContent = t("exams.addFailed");
     status.classList.add("error");
   }
 });

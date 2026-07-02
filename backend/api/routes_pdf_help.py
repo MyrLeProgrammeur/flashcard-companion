@@ -23,10 +23,17 @@ SYSTEM_PROMPT = (
     "question, dis-le explicitement plutôt que d'inventer une réponse."
 )
 
+# Answer language directive; also folded into the cache key.
+LANG_DIRECTIVE = {
+    "fr": "Réponds en français.",
+    "en": "Answer in English.",
+}
+
 
 class PdfHelpBody(BaseModel):
     rel_path: str
     question: str
+    lang: str = "fr"
 
 
 def _resolve_pdf(rel_path: str, pdf_dir: Path) -> Path:
@@ -56,8 +63,9 @@ def post_pdf_help(body: PdfHelpBody, request: Request):
 
     resolved = _resolve_pdf(body.rel_path, pdf_dir)
 
+    lang = body.lang if body.lang in LANG_DIRECTIVE else "fr"
     cache_key = hashlib.sha1(
-        f"{body.rel_path}\x1f{body.question}".encode()
+        f"{body.rel_path}\x1f{body.question}\x1f{lang}".encode()
     ).hexdigest()
 
     cached = store.get_pdf_help(cache_key)
@@ -77,7 +85,7 @@ def post_pdf_help(body: PdfHelpBody, request: Request):
     response = request.app.state.infercom_client.chat.completions.create(
         model=model,
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": f"{SYSTEM_PROMPT} {LANG_DIRECTIVE[lang]}"},
             {"role": "user", "content": user_prompt},
         ],
     )

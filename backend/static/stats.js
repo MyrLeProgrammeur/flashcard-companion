@@ -94,7 +94,7 @@ function renderHeatmap(perDay) {
     const cell = document.createElement("div");
     const level = day.count === 0 ? 0 : Math.min(4, Math.ceil((day.count / maxCount) * 4));
     cell.className = `heat-cell level-${level}`;
-    cell.title = `${day.date} · ${day.count} révision${day.count !== 1 ? "s" : ""}`;
+    cell.title = t("stats.dayCellTitle", {date: day.date, n: day.count, s: day.count !== 1 ? "s" : ""});
     wrap.appendChild(cell);
   }
 
@@ -105,8 +105,8 @@ function renderHeatmap(perDay) {
     if (d.count < lowest.count) lowest = d;
   }
   extremes.innerHTML =
-    `<span class="extreme high">Jour le plus haut : <b>${highest.date}</b> (${highest.count})</span>` +
-    `<span class="extreme low">Jour le plus bas : <b>${lowest.date}</b> (${lowest.count})</span>`;
+    `<span class="extreme high">${t("stats.dayHigh")}<b>${highest.date}</b> (${highest.count})</span>` +
+    `<span class="extreme low">${t("stats.dayLow")}<b>${lowest.date}</b> (${lowest.count})</span>`;
 }
 
 /* ---------- per-card table ---------- */

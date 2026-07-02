@@ -6,51 +6,52 @@
   <title>Réglages — Flashcard Companion</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
+  <script src="/i18n.js" defer></script>
   <script src="/common.js" defer></script>
 </head>
 <body>
   <div class="app">
     <header class="app-header">
-      <a class="icon-btn" href="/" aria-label="Retour" id="back-btn"></a>
-      <span class="mono">Réglages</span>
-      <button class="theme-toggle" data-theme-icon aria-label="Thème" onclick="toggleTheme()"></button>
+      <a class="icon-btn" href="/" aria-label="Retour" data-i18n-attr="aria-label:common.back" id="back-btn"></a>
+      <span class="mono" data-i18n="nav.settings">Réglages</span>
+      <div id="menu-mount"></div>
     </header>
 
     <h1 class="screen-title">SM-2</h1>
-    <p class="screen-sub">Intervalles gradués (en jours) appliqués dès la 1ʳᵉ révision, et bonus des cartes matures.</p>
+    <p class="screen-sub" data-i18n="settings.sm2Sub">Intervalles gradués (en jours) appliqués dès la 1ʳᵉ révision, et bonus des cartes matures.</p>
 
     <form class="settings-form" id="settings-form">
       <div class="settings-card">
         <label class="settings-row">
-          <span class="settings-label">Encore</span>
+          <span class="settings-label" data-i18n="rate.again">Encore</span>
           <span class="settings-input-wrap">
             <input class="settings-input" type="number" step="0.1" min="0" name="again_days" id="again_days" required>
-            <span class="settings-unit">j</span>
+            <span class="settings-unit" data-i18n="settings.unitDays">j</span>
           </span>
         </label>
         <label class="settings-row">
-          <span class="settings-label">Difficile</span>
+          <span class="settings-label" data-i18n="rate.hard">Difficile</span>
           <span class="settings-input-wrap">
             <input class="settings-input" type="number" step="0.1" min="0" name="hard_days" id="hard_days" required>
-            <span class="settings-unit">j</span>
+            <span class="settings-unit" data-i18n="settings.unitDays">j</span>
           </span>
         </label>
         <label class="settings-row">
-          <span class="settings-label">Correct</span>
+          <span class="settings-label" data-i18n="rate.good">Correct</span>
           <span class="settings-input-wrap">
             <input class="settings-input" type="number" step="0.1" min="0" name="good_days" id="good_days" required>
-            <span class="settings-unit">j</span>
+            <span class="settings-unit" data-i18n="settings.unitDays">j</span>
           </span>
         </label>
         <label class="settings-row">
-          <span class="settings-label">Facile</span>
+          <span class="settings-label" data-i18n="rate.easy">Facile</span>
           <span class="settings-input-wrap">
             <input class="settings-input" type="number" step="0.1" min="0" name="easy_days" id="easy_days" required>
-            <span class="settings-unit">j</span>
+            <span class="settings-unit" data-i18n="settings.unitDays">j</span>
           </span>
         </label>
         <label class="settings-row">
-          <span class="settings-label">Bonus Facile</span>
+          <span class="settings-label" data-i18n="settings.easyBonus">Bonus Facile</span>
           <span class="settings-input-wrap">
             <input class="settings-input" type="number" step="0.05" min="1" name="easy_bonus" id="easy_bonus" required>
             <span class="settings-unit">×</span>
@@ -58,12 +59,12 @@
         </label>
       </div>
 
-      <h1 class="screen-title">Notifications</h1>
-      <p class="screen-sub">Heure du rappel quotidien s'il reste des cartes dues (Termux, local, sans Google).</p>
+      <h1 class="screen-title" data-i18n="settings.notifTitle">Notifications</h1>
+      <p class="screen-sub" data-i18n="settings.notifSub">Heure du rappel quotidien s'il reste des cartes dues (Termux, local, sans Google).</p>
 
       <div class="settings-card">
         <label class="settings-row">
-          <span class="settings-label">Heure du rappel</span>
+          <span class="settings-label" data-i18n="settings.reminderHour">Heure du rappel</span>
           <span class="settings-input-wrap">
             <input class="settings-input" type="number" step="1" min="0" max="23" name="notify_hour" id="notify_hour" required>
             <span class="settings-unit">h</span>
@@ -71,7 +72,7 @@
         </label>
       </div>
 
-      <button class="cta" type="submit" id="save-btn">Enregistrer</button>
+      <button class="cta" type="submit" id="save-btn" data-i18n="settings.save">Enregistrer</button>
       <p class="settings-status" id="status"></p>
     </form>
   </div>

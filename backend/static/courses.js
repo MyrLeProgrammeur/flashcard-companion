@@ -21,13 +21,13 @@ async function loadCourses() {
     const res = await fetch("/api/courses", { cache: "no-store" });
     data = await res.json();
   } catch {
-    list.innerHTML = `<p class="empty-note">Impossible de charger les cours.</p>`;
+    list.innerHTML = `<p class="empty-note">${t("courses.loadError")}</p>`;
     return;
   }
 
   const subjects = Object.keys(data);
   if (!subjects.length) {
-    list.innerHTML = `<p class="empty-note">Aucune matière trouvée.</p>`;
+    list.innerHTML = `<p class="empty-note">${t("courses.noSubjects")}</p>`;
     return;
   }
 
@@ -42,7 +42,7 @@ async function loadCourses() {
     if (!pdfs.length) {
       const empty = document.createElement("p");
       empty.className = "empty-note";
-      empty.textContent = "Aucun PDF trouvé.";
+      empty.textContent = t("courses.noPdf");
       list.appendChild(empty);
       continue;
     }
