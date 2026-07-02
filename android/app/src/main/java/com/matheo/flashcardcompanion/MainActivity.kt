@@ -30,6 +30,7 @@ private const val AUTOSTART_ATTEMPTS = 20
 class MainActivity : Activity() {
 
     private lateinit var webView: WebView
+    private var webViewShown = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,6 +74,16 @@ class MainActivity : Activity() {
         runOnUiThread {
             setContentView(webView)
             webView.loadUrl(BACKEND_URL)
+            webViewShown = true
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        if (webViewShown && webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            super.onBackPressed()
         }
     }
 

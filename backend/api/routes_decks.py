@@ -134,6 +134,27 @@ def deck_tree(request: Request):
     return to_list(tree, [])
 
 
+@router.get("/api/subjects")
+def list_subjects(request: Request):
+    """Flat list of every deck-tree node (all `::` prefixes), for the exam
+    subject picker — replaces the old free-text field (typo-prone exact
+    match)."""
+    apkg_dir = request.app.state.cfg["paths"]["apkg_dir"]
+    import apkg_reader
+
+    counts: dict[str, int] = {}
+    for card in apkg_reader.read_all_cards(apkg_dir):
+        segs = [s for s in card.deck_name.split("::") if s]
+        for i in range(1, len(segs) + 1):
+            path = "::".join(segs[:i])
+            counts[path] = counts.get(path, 0) + 1
+
+    return [
+        {"path": path, "depth": path.count("::"), "card_count": count}
+        for path, count in sorted(counts.items())
+    ]
+
+
 def _due_cards_in_scope(store, cards, now: datetime, path: str = "") -> list:
     """Shared due-computation: cards from `cards` whose stored state is due
     at `now`, scoped to `path` (empty = everything, else the exact deck or
