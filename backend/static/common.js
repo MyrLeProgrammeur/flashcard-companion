@@ -17,6 +17,9 @@ const ICONS = {
   settings: '<circle cx="12" cy="12" r="3" fill="none" stroke="currentColor"/><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.5-2-3.5-2.4.6a7.7 7.7 0 0 0-1.7-1l-.4-2.4H9.1l-.4 2.4a7.7 7.7 0 0 0-1.7 1l-2.4-.6-2 3.5 2 1.5a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.5 2.4-.6a7.7 7.7 0 0 0 1.7 1l.4 2.4h5.8l.4-2.4a7.7 7.7 0 0 0 1.7-1l2.4.6 2-3.5-2-1.5z" fill="none" stroke="currentColor" stroke-linejoin="round"/>',
   stats: '<path d="M4 20V10M12 20V4M20 20v-7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
   exam: '<rect x="4" y="5" width="16" height="16" rx="2" fill="none" stroke="currentColor"/><path d="M4 9h16M8 3v4M16 3v4" stroke="currentColor" stroke-linecap="round"/><path d="M9 14l2 2 4-4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-linecap="round"/>',
+  home: '<path d="M4 11l8-7 8 7M6 10v9h12v-9" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
+  globe: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor"/><path d="M3 12h18M12 3c2.6 2.7 2.6 15.3 0 18M12 3c-2.6 2.7-2.6 15.3 0 18" fill="none" stroke="currentColor"/>',
 };
 
 function icon(name, cls = "icon") {
@@ -54,8 +57,81 @@ async function pingHealth() {
 
 function renderHealthPill(el, online) {
   el.classList.toggle("offline", !online);
-  el.innerHTML = `<span class="dot"></span>${online ? "En ligne" : "Hors ligne"}`;
+  el.innerHTML = `<span class="dot"></span>${online ? t("health.online") : t("health.offline")}`;
 }
+
+/* ---------- hamburger menu (global nav + theme + language) ---------- */
+const MENU_LINKS = [
+  { href: "/", key: "nav.home", icon: "home" },
+  { href: "/courses.html", key: "nav.courses", icon: "doc" },
+  { href: "/exams.html", key: "nav.exams", icon: "exam" },
+  { href: "/stats.html", key: "nav.stats", icon: "stats" },
+  { href: "/settings.html", key: "nav.settings", icon: "settings" },
+];
+
+function buildMenu() {
+  if (document.getElementById("app-menu")) return;
+  const path = location.pathname;
+  const isActive = (href) =>
+    href === "/" ? (path === "/" || path.endsWith("/index.html")) : path.endsWith(href);
+
+  const links = MENU_LINKS.map((l) =>
+    `<a class="menu-item${isActive(l.href) ? " active" : ""}" href="${l.href}">` +
+    `${icon(l.icon)}<span>${t(l.key)}</span></a>`
+  ).join("");
+
+  const langOpts = SUPPORTED_LANGS.map((l) =>
+    `<button class="menu-lang-opt${getLang() === l ? " active" : ""}" data-lang="${l}">${l.toUpperCase()}</button>`
+  ).join("");
+
+  const backdrop = document.createElement("div");
+  backdrop.className = "menu-backdrop hidden";
+  backdrop.id = "menu-backdrop";
+
+  const sheet = document.createElement("nav");
+  sheet.className = "menu-sheet hidden";
+  sheet.id = "app-menu";
+  sheet.innerHTML =
+    `<div class="menu-head"><span class="mono">${t("nav.menu")}</span>` +
+    `<button class="icon-btn" id="menu-close" aria-label="${t("common.close")}">${icon("close")}</button></div>` +
+    `<div class="menu-section">${links}</div>` +
+    `<div class="menu-divider"></div>` +
+    `<button class="menu-item" id="menu-theme"><span data-theme-icon></span><span>${t("nav.theme")}</span></button>` +
+    `<div class="menu-divider"></div>` +
+    `<div class="menu-lang-row"><span class="menu-lang-label">${icon("globe")}<span>${t("nav.language")}</span></span>` +
+    `<div class="menu-lang">${langOpts}</div></div>`;
+
+  document.body.appendChild(backdrop);
+  document.body.appendChild(sheet);
+  applyTheme(currentTheme()); // paint the menu's theme icon
+
+  const close = () => { sheet.classList.add("hidden"); backdrop.classList.add("hidden"); };
+  backdrop.addEventListener("click", close);
+  sheet.querySelector("#menu-close").addEventListener("click", close);
+  sheet.querySelector("#menu-theme").addEventListener("click", toggleTheme);
+  sheet.querySelectorAll(".menu-lang-opt").forEach((b) =>
+    b.addEventListener("click", () => { setLang(b.getAttribute("data-lang")); location.reload(); })
+  );
+}
+
+/* Injects the hamburger button into #menu-mount (pages that have one). */
+function initMenu() {
+  const mount = document.getElementById("menu-mount");
+  if (!mount) return;
+  buildMenu();
+  mount.innerHTML =
+    `<button class="menu-btn icon-btn" id="menu-open" aria-label="${t("nav.menu")}">${icon("menu")}</button>`;
+  mount.querySelector("#menu-open").addEventListener("click", () => {
+    document.getElementById("app-menu").classList.remove("hidden");
+    document.getElementById("menu-backdrop").classList.remove("hidden");
+  });
+}
+
+/* Every page loads common.js: translate static markup + wire the menu. */
+window.addEventListener("DOMContentLoaded", () => {
+  applyI18n();
+  initMenu();
+});
 
 /* Polls /api/health; calls cb(online) on every change (and once at start). */
 function startHealthPoll(cb, intervalMs = 10000) {

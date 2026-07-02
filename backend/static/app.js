@@ -15,12 +15,12 @@ let coursesData = {}; // subject -> [{filename, rel_path}, ...], fetched once (B
 
 /* ---------- static icons ---------- */
 el("back-btn").innerHTML = icon("chevronLeft");
-el("explain-btn").innerHTML = icon("spark") + " Explique en profondeur";
+el("explain-btn").innerHTML = icon("spark") + " " + t("review.explainBtn");
 el("sheet-close").innerHTML = icon("close");
 
 /* ---------- load queue ---------- */
 async function loadQueue() {
-  el("deck-name").textContent = path ? path.split("::").pop() : "Tous les decks";
+  el("deck-name").textContent = path ? path.split("::").pop() : t("review.allDecks");
   const [dueRes, coursesRes] = await Promise.all([
     fetch(`/api/due?path=${encodeURIComponent(path)}&limit=50`, { cache: "no-store" }),
     fetch("/api/courses", { cache: "no-store" }),
@@ -68,7 +68,7 @@ function render() {
   const matches = coursesData[c.subject];
   if (matches && matches.length) {
     sourceLink.href = `/pdf-viewer.html?path=${encodeURIComponent(matches[0].rel_path)}`;
-    sourceLink.innerHTML = icon("doc") + " Voir le cours source";
+    sourceLink.innerHTML = icon("doc") + " " + t("review.viewSource");
     sourceLink.classList.remove("hidden");
   } else {
     sourceLink.classList.add("hidden");
@@ -89,8 +89,8 @@ function endSession() {
   document.querySelector(".review-foot").classList.add("hidden");
   el("session-end").classList.remove("hidden");
   el("end-sub").textContent = queue.length
-    ? `${queue.length} carte${queue.length > 1 ? "s" : ""} revue${queue.length > 1 ? "s" : ""}.`
-    : "Rien à réviser ici pour le moment.";
+    ? t("review.cardsReviewed", {n: queue.length, s: queue.length > 1 ? "s" : ""})
+    : t("review.nothingToReview");
 }
 
 /* ---------- flip ---------- */
@@ -143,7 +143,7 @@ el("explain-btn").addEventListener("click", async () => {
   showSkeleton();
   const t0 = performance.now();
   try {
-    const res = await fetch(`/api/cards/${c.guid}/explain`, { method: "POST" });
+    const res = await fetch(`/api/cards/${c.guid}/explain?lang=${getLang()}`, { method: "POST" });
     const data = await res.json();
     const ms = Math.round(performance.now() - t0);
     const grounded = Array.isArray(data.source_files) && data.source_files.length > 0;
@@ -152,24 +152,23 @@ el("explain-btn").addEventListener("click", async () => {
     chip.classList.remove("hidden", "pdf", "card-only");
     if (grounded) {
       chip.classList.add("pdf");
-      chip.innerHTML = icon("doc") + `Ancré dans ${data.source_files.map(baseName).join(", ")}`;
+      chip.innerHTML = icon("doc") + t("review.groundedIn", {files: data.source_files.map(baseName).join(", ")});
       el("degr-band").classList.add("hidden");
     } else {
       chip.classList.add("card-only");
-      chip.innerHTML = icon("alert") + "Sans source PDF · carte seule";
+      chip.innerHTML = icon("alert") + t("review.noSourceChip");
       el("degr-band").innerHTML = icon("info") +
-        "<span>Aucun PDF source n'a pu être associé à cette carte. L'explication est générée à partir du recto/verso seulement — recoupe avec ton cours.</span>";
+        "<span>" + t("review.noSourceBand") + "</span>";
       el("degr-band").classList.remove("hidden");
     }
 
     el("explain-md").innerHTML = renderMarkdown(data.explanation || "");
     renderMath(el("explain-md"));
     el("sheet-foot").textContent =
-      `${data.model || "modèle"} · ${data.cached ? "en cache" : "généré à l'instant"} · ${ms} ms`;
+      `${data.model || t("pdf.modelFallback")} · ${data.cached ? t("pdf.cached") : t("pdf.freshGen")} · ${ms} ms`;
   } catch {
-    el("explain-md").innerHTML =
-      '<p>Impossible de générer l\'explication. Vérifie que le backend et la clé Infercom sont OK.</p>';
-    el("sheet-foot").textContent = "erreur";
+    el("explain-md").innerHTML = `<p>${t("review.explainError")}</p>`;
+    el("sheet-foot").textContent = t("common.error");
   }
 });
 

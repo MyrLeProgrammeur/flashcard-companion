@@ -6,18 +6,19 @@
   <title>Cours — Flashcard Companion</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
+  <script src="/i18n.js" defer></script>
   <script src="/common.js" defer></script>
 </head>
 <body>
   <div class="app">
     <header class="app-header">
-      <a class="icon-btn" href="/" aria-label="Retour" id="back-btn"></a>
-      <span class="mono">Cours</span>
-      <button class="theme-toggle" data-theme-icon aria-label="Thème" onclick="toggleTheme()"></button>
+      <a class="icon-btn" href="/" aria-label="Retour" data-i18n-attr="aria-label:common.back" id="back-btn"></a>
+      <span class="mono" data-i18n="nav.courses">Cours</span>
+      <div id="menu-mount"></div>
     </header>
 
-    <h1 class="screen-title">PDF de cours</h1>
-    <p class="screen-sub">Un dossier par matière, retrouvé automatiquement à partir des decks — pas garanti à 100%.</p>
+    <h1 class="screen-title" data-i18n="courses.title">PDF de cours</h1>
+    <p class="screen-sub" data-i18n="courses.sub">Un dossier par matière, retrouvé automatiquement à partir des decks — pas garanti à 100%.</p>
 
     <div id="courses-list"></div>
   </div>

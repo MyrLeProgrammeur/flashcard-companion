@@ -112,7 +112,7 @@ body {
   min-height: 100dvh;
   max-width: 520px;
   margin: 0 auto;
-  padding: 0 22px;
+  padding: 0 clamp(14px, 5vw, 22px);
 }
 
 /* ---------- shared bits ---------- */
@@ -171,6 +171,56 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 .theme-toggle:active, .icon-btn:active { background: var(--accent-soft); }
 
+/* header right cluster (health pill + hamburger) never wraps/overflows */
+.header-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
+
+/* ---------- hamburger menu (drawer) ---------- */
+.menu-backdrop {
+  position: fixed; inset: 0; z-index: 40;
+  background: rgba(0, 0, 0, .38);
+}
+.menu-sheet {
+  position: fixed; top: 0; right: 0; z-index: 50;
+  width: min(82vw, 300px); height: 100dvh;
+  background: var(--surface);
+  box-shadow: var(--sheet-shadow);
+  padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 2px;
+  overflow-y: auto;
+}
+.menu-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 6px 10px;
+}
+.menu-section { display: flex; flex-direction: column; }
+.menu-item {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 12px 10px; border-radius: 12px;
+  text-decoration: none; text-align: left;
+  color: var(--ink); font-size: 15px;
+}
+.menu-item .icon { width: 20px; height: 20px; color: var(--muted); }
+.menu-item:active { background: var(--accent-soft); }
+.menu-item.active { background: var(--accent-soft); color: var(--accent); }
+.menu-item.active .icon { color: var(--accent); }
+.menu-divider { height: 1px; background: var(--hairline); margin: 8px 4px; }
+.menu-lang-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; gap: 10px;
+}
+.menu-lang-label {
+  display: flex; align-items: center; gap: 12px;
+  color: var(--ink); font-size: 15px;
+}
+.menu-lang-label .icon { width: 20px; height: 20px; color: var(--muted); }
+.menu-lang { display: flex; gap: 6px; }
+.menu-lang-opt {
+  padding: 6px 12px; border-radius: 999px;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em;
+  color: var(--muted); background: var(--surface-sunk);
+}
+.menu-lang-opt.active { background: var(--accent); color: #fff; }
+
 /* ---------- 1a — decks list ---------- */
 
 .crumbs {
@@ -186,7 +236,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .screen-title {
   font-family: var(--font-serif);
   font-weight: 500;
-  font-size: 30px;
+  font-size: clamp(23px, 7vw, 30px);
   line-height: 1.1;
   margin: 6px 0 2px;
 }

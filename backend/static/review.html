@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/vendor/katex/katex.min.css">
   <script src="/vendor/katex/katex.min.js" defer></script>
   <script src="/vendor/katex/contrib/auto-render.min.js" defer></script>
+  <script src="/i18n.js" defer></script>
   <script src="/common.js" defer></script>
 </head>
 <body>
@@ -16,7 +17,7 @@
     <div class="review-body">
       <!-- topbar -->
       <div class="topbar">
-        <a class="back" href="/" aria-label="Retour" id="back-btn"></a>
+        <a class="back" href="/" aria-label="Retour" data-i18n-attr="aria-label:common.back" id="back-btn"></a>
         <div class="prog-wrap">
           <div class="prog-head">
             <span id="deck-name">—</span>
@@ -31,12 +32,12 @@
       <div class="card-flip" id="flip">
         <div class="card-inner">
           <div class="card-face front">
-            <span class="face-label">Recto</span>
+            <span class="face-label" data-i18n="review.recto">Recto</span>
             <div class="card-q" id="front"></div>
-            <div class="card-hint">Touchez pour révéler</div>
+            <div class="card-hint" data-i18n="review.tapReveal">Touchez pour révéler</div>
           </div>
           <div class="card-face back">
-            <span class="face-label">Verso</span>
+            <span class="face-label" data-i18n="review.verso">Verso</span>
             <div class="card-a" id="back"></div>
             <div class="card-note hidden" id="note"></div>
           </div>
@@ -46,7 +47,7 @@
       <!-- bottom zone -->
       <div class="review-foot">
         <!-- recto state -->
-        <div class="recto-band" id="recto-band">
+        <div class="recto-band" id="recto-band" data-i18n="review.tapToAnswer">
           Touchez la carte pour répondre
         </div>
         <!-- shortcut to source PDF (Batch 6) — independent of flip state -->
@@ -54,18 +55,18 @@
         <!-- verso state -->
         <button class="explain-btn hidden" id="explain-btn"></button>
         <div class="rating-row hidden" id="rating-row">
-          <button class="rate again" data-q="1"><span class="lbl">Encore</span><span class="iv" data-iv="again"></span></button>
-          <button class="rate hard" data-q="3"><span class="lbl">Difficile</span><span class="iv" data-iv="hard"></span></button>
-          <button class="rate good" data-q="4"><span class="lbl">Correct</span><span class="iv" data-iv="good"></span></button>
-          <button class="rate easy" data-q="5"><span class="lbl">Facile</span><span class="iv" data-iv="easy"></span></button>
+          <button class="rate again" data-q="1"><span class="lbl" data-i18n="rate.again">Encore</span><span class="iv" data-iv="again"></span></button>
+          <button class="rate hard" data-q="3"><span class="lbl" data-i18n="rate.hard">Difficile</span><span class="iv" data-iv="hard"></span></button>
+          <button class="rate good" data-q="4"><span class="lbl" data-i18n="rate.good">Correct</span><span class="iv" data-iv="good"></span></button>
+          <button class="rate easy" data-q="5"><span class="lbl" data-i18n="rate.easy">Facile</span><span class="iv" data-iv="easy"></span></button>
         </div>
       </div>
 
       <!-- session end -->
       <div class="session-end hidden" id="session-end">
-        <div class="big">Session terminée</div>
-        <p id="end-sub">Toutes les cartes dues ont été revues.</p>
-        <a class="cta" href="/" style="width:auto;padding:14px 28px;margin-top:12px">Retour aux decks</a>
+        <div class="big" data-i18n="review.sessionDone">Session terminée</div>
+        <p id="end-sub" data-i18n="review.allReviewed">Toutes les cartes dues ont été revues.</p>
+        <a class="cta" href="/" style="width:auto;padding:14px 28px;margin-top:12px" data-i18n="review.backToDecks">Retour aux decks</a>
       </div>
     </div>
   </div>
@@ -75,8 +76,8 @@
   <div class="sheet" id="sheet">
     <div class="sheet-grab"></div>
     <div class="sheet-head">
-      <h2>Explication approfondie</h2>
-      <button class="sheet-close" id="sheet-close" aria-label="Fermer"></button>
+      <h2 data-i18n="review.deepExplTitle">Explication approfondie</h2>
+      <button class="sheet-close" id="sheet-close" aria-label="Fermer" data-i18n-attr="aria-label:common.close"></button>
     </div>
     <div class="src-chip pdf hidden" id="src-chip"></div>
     <div class="sheet-scroll">

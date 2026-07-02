@@ -20,6 +20,13 @@ SYSTEM_PROMPT = (
     "à partir de la carte seule et dis-le explicitement."
 )
 
+# Answer language directive appended to the system prompt (and folded into the
+# cache key so switching language doesn't serve a stale-language explanation).
+LANG_DIRECTIVE = {
+    "fr": "Réponds en français.",
+    "en": "Answer in English.",
+}
+
 
 def explain_card(
     client: OpenAI,
@@ -29,9 +36,12 @@ def explain_card(
     store: SrsStore,
     max_pdf_context_chars: int,
     force: bool = False,
+    lang: str = "fr",
 ) -> dict:
+    lang = lang if lang in LANG_DIRECTIVE else "fr"
+    cache_guid = f"{card.guid}\x1f{lang}"
     if not force:
-        cached = store.get_explanation(card.guid)
+        cached = store.get_explanation(cache_guid)
         if cached is not None:
             return {**cached, "cached": True}
 
@@ -53,13 +63,13 @@ def explain_card(
     response = client.chat.completions.create(
         model=model,
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": f"{SYSTEM_PROMPT} {LANG_DIRECTIVE[lang]}"},
             {"role": "user", "content": user_prompt},
         ],
     )
     explanation = response.choices[0].message.content
 
-    store.save_explanation(card.guid, explanation, source_files, model)
+    store.save_explanation(cache_guid, explanation, source_files, model)
     return {
         "explanation": explanation,
         "source_files": source_files,

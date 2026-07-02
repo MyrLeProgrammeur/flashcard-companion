@@ -16,7 +16,7 @@ async function loadSettings() {
       if (data[f] !== undefined && data[f] !== null) el(f).value = data[f];
     }
   } catch {
-    el("status").textContent = "Impossible de charger les réglages.";
+    el("status").textContent = t("settings.loadError");
     el("status").classList.add("error");
   }
 }
@@ -25,7 +25,7 @@ el("settings-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const status = el("status");
   status.classList.remove("error", "ok");
-  status.textContent = "Enregistrement…";
+  status.textContent = t("settings.saving");
 
   const body = {};
   for (const f of FIELDS) body[f] = parseFloat(el(f).value);
@@ -37,10 +37,10 @@ el("settings-form").addEventListener("submit", async (e) => {
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error("bad status");
-    status.textContent = "Enregistré.";
+    status.textContent = t("settings.saved");
     status.classList.add("ok");
   } catch {
-    status.textContent = "Échec de l'enregistrement.";
+    status.textContent = t("settings.saveFailed");
     status.classList.add("error");
   }
 });

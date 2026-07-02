@@ -46,6 +46,16 @@ app.include_router(routes_pdf.router)
 app.include_router(routes_pdf_help.router)
 
 
+@app.middleware("http")
+async def no_store(request, call_next):
+    # Single-user loopback server behind an Android WebView: the WebView caches
+    # static assets heuristically (no CDN, no revalidation) and will otherwise
+    # serve a stale UI after a redeploy. Force revalidation on every request.
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @app.get("/api/health")
 def health():
     checks = {}
