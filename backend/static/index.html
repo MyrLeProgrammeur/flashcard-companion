@@ -180,6 +180,12 @@
         offline.classList.toggle("hidden", online);
         if (online) loadTree();
       });
+
+      // Refresh the deck list whenever the app comes back to the foreground, so a
+      // deck synced while the app sat in the background shows up without a restart.
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") loadTree();
+      });
     });
   </script>
 </body>
