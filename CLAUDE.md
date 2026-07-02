@@ -6,8 +6,6 @@ PDF source. Voir `README.md` pour le démarrage rapide.
 
 ## Contexte à charger avant d'agir
 
-- `flashcard-pipeline` (`../flashcard-pipeline`) est **read-only** depuis ce repo :
-  ce projet ne doit jamais écrire dans ses `.apkg`, son `themes.json` ou son état.
 - Le GUID stable `sha1(subject\x1ftheme\x1fquestion)` (voir `db_writer.py` du
   pipeline) est la clé de jointure — jamais `notes.id`.
 
@@ -28,4 +26,6 @@ PDF source. Voir `README.md` pour le démarrage rapide.
   dans un navigateur PC — pas besoin du tel pour ça.
 - Tests unitaires : `pytest backend/tests/`.
 - Manips sur le tel (install Termux, APK, vérif chemins Syncthing) = session dédiée,
-  câble ou wireless debugging. Claude ne pousse jamais d'APK (installé par Matheo).
+  câble ou wireless debugging. Le tel est accessible en `adb` depuis le PC quand
+  branché/appairé (déjà autorisé) : Claude peut builder et `adb install` l'APK
+  directement, pas besoin que Matheo le fasse manuellement.
