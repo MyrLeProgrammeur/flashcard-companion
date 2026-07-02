@@ -24,6 +24,24 @@ function pct(x) {
   return `${(x * 100).toFixed(1)}%`;
 }
 
+async function loadSubjects() {
+  const select = el("deck_path");
+  let subjects = [];
+  try {
+    const res = await fetch("/api/subjects", { cache: "no-store" });
+    subjects = await res.json();
+  } catch {
+    subjects = [];
+  }
+
+  for (const node of subjects) {
+    const option = document.createElement("option");
+    option.value = node.path;
+    option.textContent = " ".repeat(node.depth) + node.path.split("::").pop();
+    select.appendChild(option);
+  }
+}
+
 async function loadExams() {
   const tbody = el("exams-tbody");
   const empty = el("exams-empty");
@@ -79,8 +97,14 @@ el("exam-form").addEventListener("submit", async (e) => {
   status.classList.remove("error", "ok");
   status.textContent = t("exams.adding");
 
+  const deckPath = el("deck_path").value.trim();
+  if (!deckPath) {
+    status.textContent = t("exams.addFailed");
+    status.classList.add("error");
+    return;
+  }
   const body = {
-    deck_path: el("deck_path").value.trim(),
+    deck_path: deckPath,
     expected_results_date: el("expected_results_date").value,
   };
 
@@ -101,4 +125,5 @@ el("exam-form").addEventListener("submit", async (e) => {
   }
 });
 
+loadSubjects();
 loadExams();

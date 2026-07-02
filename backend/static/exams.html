@@ -25,7 +25,9 @@
         <label class="settings-row">
           <span class="settings-label" data-i18n="exams.subject">Matière</span>
           <span class="settings-input-wrap">
-            <input class="settings-input" style="width:140px;text-align:left" type="text" name="deck_path" id="deck_path" required>
+            <select class="settings-input" style="width:140px;text-align:left" name="deck_path" id="deck_path" required>
+              <option value="" disabled selected data-i18n="exams.pickSubject">Choisir une matière…</option>
+            </select>
           </span>
         </label>
         <label class="settings-row">

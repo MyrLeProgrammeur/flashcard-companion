@@ -22,7 +22,7 @@ def list_courses(request: Request):
 
     result: dict[str, list[dict]] = {}
     for subject in subjects:
-        matches = source_matcher.find_source_pdfs(subject, pdf_dir)
+        matches = source_matcher.find_source_pdfs([subject], pdf_dir)
         result[subject] = [
             {
                 "filename": Path(m).name,

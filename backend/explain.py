@@ -45,10 +45,13 @@ def explain_card(
         if cached is not None:
             return {**cached, "cached": True}
 
-    source_files = store.get_source_match(card.subject)
+    # Match against every deck-path segment, not just the first (::-separated)
+    # one, so an added level (e.g. "M1::Stats") doesn't break matching.
+    segments = [s for s in card.deck_name.split("::") if s]
+    source_files = store.get_source_match(card.deck_name)
     if source_files is None:
-        source_files = find_source_pdfs(card.subject, pdf_dir)
-        store.save_source_match(card.subject, source_files)
+        source_files = find_source_pdfs(segments, pdf_dir)
+        store.save_source_match(card.deck_name, source_files)
 
     pdf_context = build_context(source_files, max_pdf_context_chars) if source_files else ""
 
