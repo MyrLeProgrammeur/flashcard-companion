@@ -139,7 +139,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 0 14px;
+  padding: calc(20px + env(safe-area-inset-top)) 0 14px;
 }
 
 .health-pill {
@@ -325,7 +325,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 
 .review-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-bottom: 18px; }
 
-.topbar { display: flex; align-items: center; gap: 14px; padding: 18px 0 12px; }
+.topbar { display: flex; align-items: center; gap: 14px; padding: calc(18px + env(safe-area-inset-top)) 0 12px; }
 .topbar .back { color: var(--muted); display: flex; padding: 4px; margin-left: -4px; }
 .topbar .prog-wrap { flex: 1; }
 .topbar .prog-head {
@@ -717,6 +717,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   z-index: 5;
 }
 .pdf-help-fab:active { filter: brightness(.94); }
+.pdf-help-fab svg { width: 28px; height: 28px; }
 
 .pdf-help-form {
   display: flex; gap: 10px;
