@@ -8,7 +8,9 @@ openai>=1.50.0
 pyyaml>=6.0
 pydantic>=2
 
-# Optional — PDF grounding (pdf_context.py). It imports lazily, so the app runs
-# in card-only mode without it. NOT installable on Termux (pypdfium2 ships no
-# Termux build). Install on a PC for locally PDF-grounded dev:
-#   pip install pdfplumber
+# PDF grounding (pdf_context.py) — text extraction for the "besoin d'aide"
+# feature. pypdf is pure Python and installs on Termux (aarch64/Bionic),
+# unlike pdfplumber whose pypdfium2 dep has no Termux build. The extractor
+# prefers pdfplumber where present (PC/dev) and falls back to pypdf on Termux.
+pypdf>=4.0
+# Optional on PC/dev for slightly better extraction: pip install pdfplumber
