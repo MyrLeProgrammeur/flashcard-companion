@@ -133,10 +133,24 @@ body {
 
 button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 
-/* Smooth page-to-page navigation. This is a multi-page app, so the real
-   "transition when clicking stuff" is the cross-document view transition —
-   supported by the app's modern WebView. Falls back to an instant nav where
-   unsupported, and is auto-disabled under prefers-reduced-motion. */
+/* Smooth page-to-page navigation.
+   PRIMARY mechanism: every page fades + settles its main container (.app) in on
+   load via the @keyframes below. This is pure CSS, needs no JS, and fires
+   reliably on every full-document navigation in any browser — including this
+   Android WebView, where cross-document View Transitions do NOT fire. It makes
+   navigation feel smooth even though each tap is a real page load.
+   PROGRESSIVE ENHANCEMENT: the @view-transition rule is kept for browsers that
+   honour cross-document VT (harmless no-op where they don't). Both are curtailed
+   under prefers-reduced-motion by the global block further down. */
+@keyframes fc-page-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* `backwards` fill only (never `forwards`): after the animation ends the element
+   drops back to its base style with NO lingering transform, so it can't become a
+   containing block that would re-anchor the position:fixed PDF help FAB. */
+.app { animation: fc-page-enter .28s cubic-bezier(.22, .61, .36, 1) backwards; }
+
 @view-transition { navigation: auto; }
 ::view-transition-old(root),
 ::view-transition-new(root) { animation-duration: .22s; }

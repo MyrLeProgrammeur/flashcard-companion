@@ -169,6 +169,16 @@
       document.getElementById("all-count").textContent = totalDue;
       cta.href = `/review.html?path=${encodeURIComponent(stack.join("::"))}`;
       cta.classList.toggle("cta-off", totalDue === 0);
+
+      // Animate the level swap so drilling in/out (which re-renders in place, no
+      // page load) doesn't teleport. WAJS is reliable everywhere; skip it under
+      // reduced-motion.
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        const anim = { duration: 210, easing: "cubic-bezier(.22,.61,.36,1)" };
+        const frames = [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }];
+        list.animate(frames, anim);
+        document.getElementById("title").animate(frames, anim);
+      }
     }
 
     async function loadTree() {
