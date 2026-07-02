@@ -567,6 +567,36 @@ button:active,
 
 .sheet-scroll { flex: 1; overflow: auto; padding: 16px 22px 24px; }
 
+/* pdf help chat transcript (Batch 5, multi-turn) */
+.help-transcript { display: flex; flex-direction: column; gap: 12px; }
+.chat-bubble {
+  max-width: 86%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 14.5px; line-height: 1.5;
+  word-break: break-word;
+}
+.chat-bubble-user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: var(--bg);
+  border-radius: 16px 16px 4px 16px;
+  white-space: pre-wrap;
+}
+.chat-bubble-assistant {
+  align-self: flex-start;
+  background: var(--surface-sunk);
+  color: var(--ink-soft);
+  border-radius: 16px 16px 16px 4px;
+}
+.chat-bubble-assistant.md { padding: 12px 14px; }
+.chat-bubble-assistant.md p:last-child { margin-bottom: 0; }
+.chat-bubble-thinking { padding: 14px; }
+.chat-bubble-error {
+  background: var(--degr-band-bg); border: 1px solid var(--degr-band-border);
+  color: var(--degr-band-ink);
+}
+
 .degr-band {
   display: flex; gap: 10px;
   padding: 12px 14px; margin-bottom: 16px;

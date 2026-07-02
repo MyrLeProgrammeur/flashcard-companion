@@ -103,8 +103,50 @@ async function load() {
   }
 }
 
-/* ---------- "besoin d'aide" sheet (Batch 5) ---------- */
+/* ---------- "besoin d'aide" chat sheet (Batch 5, multi-turn) ---------- */
+let helpHistory = [];
+const transcriptEl = el("help-transcript");
+
+function scrollTranscriptToEnd() {
+  transcriptEl.scrollTop = transcriptEl.scrollHeight;
+}
+
+function appendUserBubble(content) {
+  const bubble = document.createElement("div");
+  bubble.className = "chat-bubble chat-bubble-user";
+  bubble.textContent = content;
+  transcriptEl.appendChild(bubble);
+  scrollTranscriptToEnd();
+}
+
+function appendAssistantBubble(content) {
+  const bubble = document.createElement("div");
+  bubble.className = "chat-bubble chat-bubble-assistant md";
+  bubble.innerHTML = renderMarkdown(content || "");
+  transcriptEl.appendChild(bubble);
+  renderMath(bubble);
+  scrollTranscriptToEnd();
+  return bubble;
+}
+
+function appendThinkingBubble() {
+  const bubble = document.createElement("div");
+  bubble.className = "chat-bubble chat-bubble-assistant chat-bubble-thinking";
+  bubble.innerHTML =
+    '<div class="skeleton"><div class="sk-line"></div><div class="sk-line"></div><div class="sk-line short"></div></div>';
+  transcriptEl.appendChild(bubble);
+  scrollTranscriptToEnd();
+  return bubble;
+}
+
+function resetHelpChat() {
+  helpHistory = [];
+  transcriptEl.innerHTML = "";
+  el("help-sheet-foot").textContent = "";
+}
+
 function openHelpSheet() {
+  resetHelpChat();
   el("help-sheet-overlay").classList.add("open");
   el("help-sheet").classList.add("open");
 }
@@ -119,41 +161,48 @@ el("pdf-help-fab").addEventListener("click", () => {
 el("help-sheet-close").addEventListener("click", closeHelpSheet);
 el("help-sheet-overlay").addEventListener("click", closeHelpSheet);
 
-function showHelpSkeleton() {
-  el("help-sheet-foot").textContent = "";
-  el("help-answer").innerHTML =
-    '<div class="skeleton"><div class="sk-line"></div><div class="sk-line"></div><div class="sk-line short"></div></div>';
-}
-
 el("pdf-help-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const question = el("pdf-help-question").value.trim();
+  const questionEl = el("pdf-help-question");
+  const question = questionEl.value.trim();
   if (!question || !relPath) return;
 
   const submitBtn = el("pdf-help-submit");
   submitBtn.disabled = true;
-  showHelpSkeleton();
+  questionEl.value = "";
+
+  helpHistory.push({ role: "user", content: question });
+  appendUserBubble(question);
+  const thinkingBubble = appendThinkingBubble();
+  el("help-sheet-foot").textContent = "";
   const t0 = performance.now();
   try {
     const res = await fetch("/api/courses/help", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rel_path: relPath, question, lang: getLang() }),
+      body: JSON.stringify({ rel_path: relPath, messages: helpHistory, lang: getLang() }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const ms = Math.round(performance.now() - t0);
 
-    el("help-answer").innerHTML = renderMarkdown(data.answer || "");
-    renderMath(el("help-answer"));
+    thinkingBubble.remove();
+    helpHistory.push({ role: "assistant", content: data.answer || "" });
+    appendAssistantBubble(data.answer || "");
     el("help-sheet-foot").textContent =
       `${data.model || t("pdf.modelFallback")} · ${data.cached ? t("pdf.cached") : t("pdf.freshGen")} · ${ms} ms`;
   } catch {
-    el("help-answer").innerHTML =
-      `<p>${t("pdf.helpError")}</p>`;
-    el("help-sheet-foot").textContent = "erreur";
+    thinkingBubble.remove();
+    helpHistory.pop();
+    const errorBubble = document.createElement("div");
+    errorBubble.className = "chat-bubble chat-bubble-assistant chat-bubble-error";
+    errorBubble.textContent = t("pdf.helpError");
+    transcriptEl.appendChild(errorBubble);
+    scrollTranscriptToEnd();
+    el("help-sheet-foot").textContent = t("common.error");
   } finally {
     submitBtn.disabled = false;
+    questionEl.focus();
   }
 });
 

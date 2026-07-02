@@ -1,11 +1,13 @@
 """
-"Besoin d'aide" floating button on the PDF viewer (Batch 5): a single
-stateless question grounded in the whole currently-open course PDF,
-answered via Infercom DeepSeek-V3.1 — same infra/shape as explain.py's
-card-explanation feature, but scoped to one resolved PDF file instead of
-a card's matched sources.
+"Besoin d'aide" floating button on the PDF viewer (Batch 5): a multi-turn
+chat grounded in the whole currently-open course PDF, answered via
+Infercom DeepSeek-V3.1 — same infra/shape as explain.py's card-explanation
+feature, but scoped to one resolved PDF file instead of a card's matched
+sources. Every turn re-sends the full conversation; the PDF context stays
+in the system message so each follow-up remains grounded.
 """
 import hashlib
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
@@ -30,9 +32,15 @@ LANG_DIRECTIVE = {
 }
 
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
 class PdfHelpBody(BaseModel):
     rel_path: str
-    question: str
+    question: str | None = None
+    messages: list[ChatMessage] | None = None
     lang: str = "fr"
 
 
@@ -54,8 +62,16 @@ def _resolve_pdf(rel_path: str, pdf_dir: Path) -> Path:
 
 @router.post("/api/courses/help")
 def post_pdf_help(body: PdfHelpBody, request: Request):
-    if not body.question.strip():
-        raise HTTPException(status_code=400, detail="question must not be empty")
+    # Back-compat: legacy single-shot {question} becomes a one-message list.
+    if body.messages:
+        messages = body.messages
+    elif body.question and body.question.strip():
+        messages = [ChatMessage(role="user", content=body.question)]
+    else:
+        messages = []
+
+    if not messages or not messages[-1].content.strip():
+        raise HTTPException(status_code=400, detail="messages must not be empty")
 
     cfg = request.app.state.cfg
     store = request.app.state.store
@@ -64,8 +80,12 @@ def post_pdf_help(body: PdfHelpBody, request: Request):
     resolved = _resolve_pdf(body.rel_path, pdf_dir)
 
     lang = body.lang if body.lang in LANG_DIRECTIVE else "fr"
+    messages_json = json.dumps(
+        [{"role": m.role, "content": m.content} for m in messages],
+        ensure_ascii=False,
+    )
     cache_key = hashlib.sha1(
-        f"{body.rel_path}\x1f{body.question}\x1f{lang}".encode()
+        f"{body.rel_path}\x1f{lang}\x1f{messages_json}".encode()
     ).hexdigest()
 
     cached = store.get_pdf_help(cache_key)
@@ -75,21 +95,21 @@ def post_pdf_help(body: PdfHelpBody, request: Request):
     max_pdf_context_chars = cfg["explain"]["max_pdf_context_chars"]
     pdf_context = build_context([str(resolved)], max_pdf_context_chars)
 
-    user_prompt = f"Question: {body.question}\n"
+    system_prompt = f"{SYSTEM_PROMPT} {LANG_DIRECTIVE[lang]}"
     if pdf_context:
-        user_prompt += f"\nExtraits du cours source:\n{pdf_context}"
+        system_prompt += f"\n\nExtraits du cours source:\n{pdf_context}"
     else:
-        user_prompt += "\n(Aucun texte n'a pu être extrait de ce PDF — réponds à partir de tes connaissances et dis-le explicitement.)"
+        system_prompt += "\n\n(Aucun texte n'a pu être extrait de ce PDF — réponds à partir de tes connaissances et dis-le explicitement.)"
 
     model = cfg["infercom"]["explain_model"]
     response = request.app.state.infercom_client.chat.completions.create(
         model=model,
         messages=[
-            {"role": "system", "content": f"{SYSTEM_PROMPT} {LANG_DIRECTIVE[lang]}"},
-            {"role": "user", "content": user_prompt},
+            {"role": "system", "content": system_prompt},
+            *[{"role": m.role, "content": m.content} for m in messages],
         ],
     )
     answer = response.choices[0].message.content
 
-    store.save_pdf_help(cache_key, body.rel_path, body.question, answer, model)
+    store.save_pdf_help(cache_key, body.rel_path, messages[-1].content, answer, model)
     return {"answer": answer, "model": model, "cached": False}
