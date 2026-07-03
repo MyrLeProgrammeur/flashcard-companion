@@ -460,17 +460,20 @@ button:active,
 .face-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: .16em; color: var(--muted-2); text-transform: uppercase; }
 
 .card-q {
-  flex: 1;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  /* Top-flow block (like the back .card-a) rather than a dual-centring flex box:
+     content flows from the top, which is far more robust for wide LaTeX. Kept
+     horizontally centred, at a size between the back's 16.5px and the old 27px. */
   min-width: 0; width: 100%;
+  margin-top: 14px;
   font-family: var(--font-serif);
   font-weight: 500;
-  /* fluid: long questions / inline formulas shrink on narrow screens instead of overflowing */
-  font-size: clamp(18px, 4.8vw, 27px); line-height: 1.28;
+  font-size: clamp(18px, 5vw, 22px); line-height: 1.4;
   text-align: center;
   overflow-wrap: anywhere;
 }
-.card-hint { font-family: var(--font-serif); font-style: italic; font-size: 14px; color: var(--muted); text-align: center; }
+/* pinned to the bottom of the (flex-column) card face even though .card-q no
+   longer grows to fill the space */
+.card-hint { margin-top: auto; font-family: var(--font-serif); font-style: italic; font-size: 14px; color: var(--muted); text-align: center; }
 
 .card-a { font-family: var(--font-serif); font-size: 16.5px; line-height: 1.5; margin-top: 14px; min-width: 0; overflow-wrap: anywhere; }
 .card-note {
