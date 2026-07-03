@@ -221,14 +221,47 @@ function renderMath(elOrId) {
       ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code", "option"],
     });
   } catch (e) { /* leave raw on failure */ }
-  // Shrink any display equation wider than its container so it fits the card /
-  // sheet / chat width instead of overflowing. Run now and again after fonts
-  // settle (KaTeX web-fonts change measured widths once loaded).
-  fitDisplayMath(el);
-  requestAnimationFrame(() => fitDisplayMath(el));
+  // Make the math fit the width. Run now and again after fonts settle (KaTeX
+  // web-fonts change measured widths once loaded).
+  const fit = () => fitMath(el);
+  fit();
+  requestAnimationFrame(fit);
   if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(() => fitDisplayMath(el)).catch(() => {});
+    document.fonts.ready.then(fit).catch(() => {});
   }
+}
+
+/* Card faces hold a short question/answer that may mix text with INLINE math
+   ($...$) — which KaTeX renders as an unbreakable box that can't wrap or scroll,
+   so a wide inline formula overflows the card. There, scale the whole block so
+   text + inline + display math all shrink together to fit. Everywhere else
+   (explain sheet, PDF chat) the content is long-form prose that must stay
+   readable and scroll vertically, so only wide display equations are scaled. */
+function fitMath(el) {
+  if (el.matches && el.matches(".card-q, .card-a, .card-note")) {
+    fitBlockToWidth(el);
+  } else {
+    fitDisplayMath(el);
+  }
+}
+
+/* Scale a whole content block down if it overflows its width (handles inline
+   math, which can't be scaled/scrolled individually without breaking the line).
+   The overflow width is taken from the widest rendered .katex box (via
+   getBoundingClientRect, so it's correct even when the math is centred and
+   spills off BOTH sides — scrollWidth only counts rightward overflow). */
+function fitBlockToWidth(el) {
+  el.style.transform = "";
+  el.style.transformOrigin = "top center";
+  const avail = el.clientWidth;
+  if (!avail) return;
+  let widest = el.scrollWidth;
+  el.querySelectorAll(".katex").forEach((k) => {
+    const w = k.getBoundingClientRect().width;
+    if (w > widest) widest = w;
+  });
+  if (widest <= avail) return;
+  el.style.transform = `scale(${(avail - 2) / widest})`;
 }
 
 /* Scale each display equation down to fit its container width. Inline math and
