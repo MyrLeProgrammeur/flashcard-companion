@@ -221,4 +221,43 @@ function renderMath(elOrId) {
       ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code", "option"],
     });
   } catch (e) { /* leave raw on failure */ }
+  // Shrink any display equation wider than its container so it fits the card /
+  // sheet / chat width instead of overflowing. Run now and again after fonts
+  // settle (KaTeX web-fonts change measured widths once loaded).
+  fitDisplayMath(el);
+  requestAnimationFrame(() => fitDisplayMath(el));
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => fitDisplayMath(el)).catch(() => {});
+  }
+}
+
+/* Scale each display equation down to fit its container width. Inline math and
+   text still wrap normally; only wide \[...\]/$$...$$ blocks are scaled.
+   The container width is found by climbing ancestors to the first one that
+   actually constrains the equation (content width < the equation's natural
+   width) — this is robust to flex-centred boxes (e.g. .card-q) that shrink-wrap
+   to the equation and so can't be measured directly. */
+function fitDisplayMath(el) {
+  if (!el) return;
+  el.querySelectorAll(".katex-display").forEach((disp) => {
+    const k = disp.querySelector(".katex");
+    if (!k) return;
+    k.style.transform = "";
+    k.style.transformOrigin = "center top";
+    disp.style.height = "";
+    const natural = k.scrollWidth;
+    if (!natural) return;
+    let avail = 0;
+    for (let p = disp; p && p !== document.body; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      const cw = p.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+      if (cw > 0 && cw < natural) { avail = cw; break; }
+    }
+    if (!avail) return; // nothing constrains it / it already fits
+    const scale = (avail - 2) / natural; // 2px inset so it never kisses the edge
+    k.style.display = "inline-block";
+    k.style.transform = `scale(${scale})`;
+    // transform doesn't shrink the layout box, so collapse the leftover space.
+    disp.style.height = k.getBoundingClientRect().height + "px";
+  });
 }

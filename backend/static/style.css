@@ -451,7 +451,9 @@ button:active,
   border-radius: 22px;
   box-shadow: var(--card-shadow);
   padding: 22px;
-  overflow: auto;
+  overflow-x: hidden;      /* never let wide math scroll the whole face sideways */
+  overflow-y: auto;        /* vertical scroll is the last-resort fallback only */
+  overscroll-behavior: contain;
 }
 .card-face.back { transform: rotateY(180deg); }
 
@@ -459,20 +461,38 @@ button:active,
 
 .card-q {
   flex: 1;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-width: 0; width: 100%;
   font-family: var(--font-serif);
-  font-weight: 500; font-size: 27px; line-height: 1.28;
+  font-weight: 500;
+  /* fluid: long questions / inline formulas shrink on narrow screens instead of overflowing */
+  font-size: clamp(18px, 4.8vw, 27px); line-height: 1.28;
   text-align: center;
+  overflow-wrap: anywhere;
 }
 .card-hint { font-family: var(--font-serif); font-style: italic; font-size: 14px; color: var(--muted); text-align: center; }
 
-.card-a { font-family: var(--font-serif); font-size: 16.5px; line-height: 1.5; margin-top: 14px; }
+.card-a { font-family: var(--font-serif); font-size: 16.5px; line-height: 1.5; margin-top: 14px; min-width: 0; overflow-wrap: anywhere; }
 .card-note {
   margin-top: 14px; padding: 14px;
   background: var(--surface-sunk); border-radius: 12px;
   font-family: var(--font-mono); font-size: 13px; line-height: 1.5; color: var(--ink-soft);
   text-align: center;
 }
+
+/* Wide display equations (\[...\], $$...$$) are scaled down to fit the container
+   width by fitDisplayMath() in common.js (JS runs after KaTeX). This rule keeps
+   them from ever spilling over before/if that runs, and trims vertical margins so
+   the card back needs less scrolling. Applies everywhere KaTeX renders. */
+.katex-display {
+  overflow: hidden;
+  width: 100%;          /* full container width even inside flex-centred .card-q,
+                           so fitDisplayMath measures the card width, not the
+                           shrink-wrapped equation width (recto scaling bug). */
+  max-width: 100%;
+  margin: .5em 0;
+}
+.katex-display > .katex { white-space: nowrap; }
 
 /* review bottom zone */
 .review-foot { display: flex; flex-direction: column; gap: 10px; }
