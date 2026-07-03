@@ -257,7 +257,11 @@ function fitBlockToWidth(el) {
   if (!avail) return;
   let widest = el.scrollWidth;
   el.querySelectorAll(".katex").forEach((k) => {
-    const w = k.getBoundingClientRect().width;
+    // Robust true width: inline math reports its width via getBoundingClientRect
+    // (scrollWidth is 0 for inline elements); a display eq clipped by
+    // .katex-display{overflow:hidden} reports a card-width-clipped bcr but its
+    // real width via scrollWidth. Take the max so both cases are covered.
+    const w = Math.max(k.getBoundingClientRect().width, k.scrollWidth);
     if (w > widest) widest = w;
   });
   if (widest <= avail) return;
