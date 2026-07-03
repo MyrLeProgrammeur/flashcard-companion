@@ -5,6 +5,21 @@ Reuses flashcard-pipeline's parsers/pdf_parser.py extraction pattern.
 from pathlib import Path
 
 
+def _read_ocr_sidecar(filepath: Path) -> str:
+    """Read the `<stem>.ocr.md` sidecar next to a scanned PDF, if present.
+
+    Scanned/handwritten PDFs have no text layer, so extraction returns empty.
+    A hosted VLM can pre-OCR such PDFs into a Markdown sidecar (see
+    flashcard-pipeline/tools/ocr_scans.py); this is the read-side fallback.
+    Pure stdlib, no deps — safe on Termux.
+    """
+    sidecar = filepath.with_name(filepath.stem + ".ocr.md")
+    try:
+        return sidecar.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
 def extract_pdf_text(filepath: Path) -> str:
     """Extract the text layer of a native PDF.
 
@@ -12,7 +27,16 @@ def extract_pdf_text(filepath: Path) -> str:
     (Android/aarch64) where pdfplumber's pypdfium2 dependency has no wheel and
     won't build, so we fall back to pure-Python pypdf (installs cleanly on
     Termux, same underlying quality), then to the poppler `pdftotext` binary.
+    If none of the above yield text (e.g. a handwritten/scanned PDF with no
+    text layer), fall back to a `<stem>.ocr.md` sidecar file if present.
     """
+    text = _extract_pdf_text_native(filepath)
+    if text.strip():
+        return text
+    return _read_ocr_sidecar(filepath)
+
+
+def _extract_pdf_text_native(filepath: Path) -> str:
     # 1. pdfplumber — best; available on PC/dev.
     try:
         import pdfplumber
