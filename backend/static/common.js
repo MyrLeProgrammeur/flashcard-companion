@@ -243,7 +243,10 @@ function fitDisplayMath(el) {
     const k = disp.querySelector(".katex");
     if (!k) return;
     k.style.transform = "";
-    k.style.transformOrigin = "center top";
+    // left-top origin: an over-wide equation is left-aligned in its display box
+    // (text-align:center can't pull over-wide content leftward), so scaling from
+    // the centre would push it off the right edge — scale from the left instead.
+    k.style.transformOrigin = "left top";
     disp.style.height = "";
     const natural = k.scrollWidth;
     if (!natural) return;
