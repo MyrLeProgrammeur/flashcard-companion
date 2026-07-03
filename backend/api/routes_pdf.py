@@ -33,6 +33,51 @@ def list_courses(request: Request):
     return result
 
 
+@router.get("/api/courses/tree")
+def courses_tree(request: Request):
+    """Recursive directory tree under `pdf_dir`, mirroring the real
+    `Cours/<Matière>/<sub-folder?>/file.pdf` layout — independent of
+    `source_matcher`'s subject-level matching in `/api/courses`. Only `.pdf`
+    files are listed; dotfiles/dirs (Syncthing markers like `.stfolder`,
+    `.stfolder.removed-*`) are skipped. Empty folders (no PDF anywhere in
+    their subtree) are dropped. Every node carries `rel_path` (posix,
+    relative to `pdf_dir`) so a leaf's `rel_path` can be handed straight to
+    `/api/courses/file?path=`."""
+    pdf_dir = Path(request.app.state.cfg["paths"]["pdf_dir"])
+
+    def walk(dir_path: Path) -> list[dict]:
+        if not dir_path.is_dir():
+            return []
+        out = []
+        for entry in sorted(dir_path.iterdir(), key=lambda p: p.name.lower()):
+            if entry.name.startswith("."):
+                continue
+            if entry.is_dir():
+                children = walk(entry)
+                if not children:
+                    continue
+                out.append(
+                    {
+                        "name": entry.name,
+                        "is_file": False,
+                        "rel_path": entry.relative_to(pdf_dir).as_posix(),
+                        "children": children,
+                    }
+                )
+            elif entry.is_file() and entry.suffix.lower() == ".pdf":
+                out.append(
+                    {
+                        "name": entry.name,
+                        "is_file": True,
+                        "rel_path": entry.relative_to(pdf_dir).as_posix(),
+                        "children": [],
+                    }
+                )
+        return out
+
+    return walk(pdf_dir)
+
+
 @router.get("/api/courses/file")
 def get_course_file(path: str, request: Request):
     pdf_dir = Path(request.app.state.cfg["paths"]["pdf_dir"]).resolve()
