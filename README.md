@@ -8,8 +8,7 @@ IA (Infercom, DeepSeek-V3.1) groundée dans le PDF source de la carte.
   synced par Syncthing (read-only), possède son propre état SRS (SM-2), sert l'UI web.
 - `android/` — coquille Kotlin WebView minimale, pointe sur `http://127.0.0.1:8420`.
 
-Voir le plan complet : `~/.claude/plans/sorted-noodling-pelican.md` (ou son
-équivalent archivé) pour le contexte de conception et les risques ouverts.
+Voir `docs/plans/` pour l'historique de conception et les décisions en cours.
 
 ## Démarrage rapide (dev PC)
 

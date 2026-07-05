@@ -29,18 +29,24 @@ Out of scope : le chantier A (app démarre le backend) est **déjà fait** (Main
 - **D (stats)** : log **append-only** de chaque révision (jamais écrasé), séparé de `card_state`. Métriques voulues (explicitement demandées par l'utilisateur) : **temps passé par carte**, **si la carte a été réussie**, **% de réussite par carte**, historique complet exploitable + **export** (« je suis mon propre Google »).
 - **D (temps)** : le front doit **mesurer le temps par carte** et l'envoyer au POST review.
 - **Cible d'exécution** : Sonnet + subagents ; UI en suivant les patterns existants (tokens CSS, `common.js` helpers, pas de framework).
+- **B1** : intervalles **au jour**, gradués dès `reps=0` (pas de learning steps sous-jour). Ex. Again=0j/Hard=1j/Good=3j/Easy=7j au 1er passage — schéma `interval_days`/`due_at` inchangé.
+- **B2** : knobs Réglages = **les 4 intervalles gradués** + **bonus Easy** (multiplicateur sur cartes matures). Pas de modificateur global d'intervalle, pas d'ease de départ/plancher exposés.
+- **B3** : réglages **globaux** (tous decks partagent les mêmes valeurs), pas de portée par dossier/matière.
+- **B4** : persistance en **table `settings` SQLite** (live-reload via `PUT`, pas de redémarrage uvicorn). `config.yaml` garde uniquement ce qui ne change pas via l'UI (paths, infercom, server).
+- **C1** : heure de notif **réglable** depuis Réglages (nouveau champ dans la table `settings`), défaut **9h**.
+- **C2** : contenu notif = **total dû simple** (« N cartes à réviser »), pas de détail par matière.
+- **C3** : planification **best-effort** via `termux-job-scheduler` (tolérance aux décalages Doze/battery), pas de mécanisme d'exactitude stricte.
+- **D1** : chrono démarré **à l'affichage du recto**, **pas de gestion de pause/reprise** (background app) — mesure simple, best-effort.
+- **D2** : **pas de purge** — le `review_log` grossit indéfiniment (cohérent avec l'objectif « être son propre Google »).
+- **D3** : vues Stats **minimales + heatmap calendaire** (jours de révision, jour le + haut / le + bas) + tableau par carte triable. Export **CSV et JSON** (même endpoint, `?format=`).
 
-## Open questions (à confirmer avec l'utilisateur avant de coder la partie concernée)
-- **B1 — Granularité des intervalles** : le SM-2 actuel est **au jour** (min 1 j). Les previews du design évoquaient des sous-jour (« <1 min », « 6 min »). Introduit-on des **learning steps sous-jour** façon Anki (Again = quelques min même session) ou reste-t-on **au jour** avec des valeurs gradués (ex. Again=remise à 0 / Hard=1 j / Good=3 j / Easy=7 j au 1er passage) ? → **décision produit, demander.**
-- **B2 — Quels knobs exposer** dans Réglages : juste les intervalles gradués par note ? + bonus Easy ? + modificateur global d'intervalle ? + ease de départ/plancher ? Garder minimal ou complet ?
-- **B3 — Portée des réglages** : global (tous decks) ou par dossier/matière ?
-- **B4 — Persistance des réglages** : `config.yaml` (fichier) vs nouvelle table `settings` en base (éditable via API) ? (Une table est plus cohérente avec un écran Réglages en écriture.)
-- **C1 — Heure de la notif** : valeur par défaut (ex. 9h ?) et **est-elle réglable** depuis l'écran Réglages ?
-- **C2 — Contenu de la notif** : juste le total dû, ou détail par matière ?
-- **C3 — Planificateur** : `termux-job-scheduler` (re-enregistrer au boot via le script Termux:Boot existant) — confirmer la fiabilité voulue (l'OS peut décaler l'horaire).
-- **D1 — Mesure du temps** : chrono depuis l'affichage du recto jusqu'au clic de note, ou depuis le flip (verso) ? Gérer les pauses/app en arrière-plan ?
-- **D2 — Rétention** : le log grossit indéfiniment (ok pour usage perso ?) — pas de purge par défaut.
-- **D3 — Visualisations & export** : quelles vues exactes (courbe de rétention, heatmap, top cartes ratées…) et quel format d'export (CSV/JSON/les deux) ? « Comparer avec mes notes » = import de notes externes plus tard (hors scope v1).
+## Batch 8 — Suivi examens & corrélation matière (nouveau, hors scope initial D, à faire après Batch 1-7)
+- **Périmètre** : par matière (= dossier `::` racine), l'utilisateur saisit **à l'avance** une date approximative de résultats d'examen. Le jour venu, une notif (même mécanisme que Batch 7) rappelle de renseigner la note — **la notif ne contient pas de saisie**, elle pointe juste vers l'app ; la saisie reste manuelle dans l'écran Réglages/Stats.
+- **Modèle de données** : nouvelle table `subject_grades(deck_path, expected_results_date, grade nullable)`, créée par l'utilisateur via un petit formulaire (matière + date approx.).
+- **Job de rappel** : réutilise le mécanisme Termux du Batch 7 (`termux-job-scheduler`, tap → ouvre l'app) ; condition de déclenchement = lignes où `expected_results_date <= now` ET `grade IS NULL`.
+- **Corrélation affichée** : **pas de score composite**. Par matière, affichage côte à côte de 3 métriques indépendantes — **note obtenue**, **% de réussite en révision**, **temps total investi** — classement/comparaison laissés à l'œil de l'utilisateur, pas de formule de pondération inventée.
+- **Dépendances** : nécessite Batch 5 (stats agrégées par carte/deck) et Batch 7 (mécanisme de notif) déjà en place.
+- **Non-scope** : pas d'import de notes externes (« comparer avec mes notes » reste hors scope v1, cf. ancien D3).
 
 ## Batches (independent)
 
@@ -79,7 +85,7 @@ Out of scope : le chantier A (app démarre le backend) est **déjà fait** (Main
 
 ### Batch 6 — Statistiques (UI)  (dépend de Batch 5)
 - Files: `backend/static/` — `stats.html` + JS, lien depuis `index.html`, styles.
-- Actions: vues (cf. D3) : vue d'ensemble, tableau par carte triable (% réussite, temps), bouton export. Graphes en SVG maison ou lib légère self-hosted (pas de CDN Google). Suivre tokens + dark mode.
+- Actions: vues (cf. D3) : vue d'ensemble, **heatmap calendaire** des jours de révision (+ jour le plus haut / le plus bas), tableau par carte triable (% réussite, temps), bouton export CSV/JSON. Graphes en SVG maison ou lib légère self-hosted (pas de CDN Google). Suivre tokens + dark mode.
 - Verify: ouvrir `/stats.html`, données cohérentes avec le log.
 - Done when: l'utilisateur visualise et exporte ses données de révision.
 
@@ -92,7 +98,7 @@ Out of scope : le chantier A (app démarre le backend) est **déjà fait** (Main
 
 ## Execution
 - Un subagent par batch ; **commit + `/clear` entre chaque batch**.
-- Ordre conseillé : 1 → 2 → 3 (réglages) ; 4 → 5 → 6 (stats) ; 7 (notifs) en dernier (dépend de l'heure réglable si B/C liés).
+- Ordre conseillé : 1 → 2 → 3 (réglages) ; 4 → 5 → 6 (stats) ; 7 (notifs) ; 8 (examens, dépend de 5 et 7) en dernier.
 - Après les batches touchant le backend : **déployer sur le tel** (scp vers `~/flashcard-companion/backend/`, redémarrer uvicorn) et vérifier via `adb forward tcp:8420` + navigateur/app. Le repo PC est la source ; le tel est la cible d'exécution.
 - Tests : `pytest backend/tests/` ; l'UI se teste en ouvrant `http://127.0.0.1:8420/...` (via `adb forward`).
 
