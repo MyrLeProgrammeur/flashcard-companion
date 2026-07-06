@@ -1,8 +1,8 @@
-/* Examens (Batch 8): petit formulaire pour créer une entrée subject_grades
-   (matière + date approx. des résultats), et affichage de la corrélation
-   par matière — note / % réussite / temps investi côte à côte, sans score
-   composite (GET/POST/PUT /api/exams). La note se saisit en tapant dans le
-   tableau puis en quittant le champ (PUT immédiat, best-effort). */
+/* Exams (Batch 8): small form to create a subject_grades entry
+   (subject + approx. results date), and displays the correlation
+   per subject — grade / % success / time invested side by side, no composite
+   score (GET/POST/PUT /api/exams). The grade is entered by typing in the
+   table then leaving the field (immediate PUT, best-effort). */
 
 const el = (id) => document.getElementById(id);
 

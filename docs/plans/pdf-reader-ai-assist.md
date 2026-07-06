@@ -1,93 +1,93 @@
-# Plan — Lecteur PDF intégré + aide IA groundée
+# Plan — Integrated PDF reader + grounded AI help
 
 > Executor: Sonnet + subagents. Apply the decisions, do not re-litigate them. Unresolved doubt → stop and ask the user.
 
 ## Goal & scope
 
-Ajouter un lecteur PDF intégré à l'app (WebView), pour consulter les cours sources directement, avec un bouton flottant « besoin d'aide » (icône étincelle, style Gemini côté visuel, DeepSeek-V3.1 via Infercom côté moteur) permettant de poser une question groundée sur le PDF actuellement affiché.
+Add a PDF reader built into the app (WebView), to consult source course materials directly, with a floating "need help" button (sparkle icon, Gemini-style visually, DeepSeek-V3.1 via Infercom on the engine side) allowing a grounded question to be asked about the PDF currently displayed.
 
-**Contexte de la décision** : l'idée de départ était un chatbot générique branché DeepSeek. Elle a été abandonnée au profit de ce lecteur PDF + question groundée, jugé supérieur car le grounding devient exact (le PDF affiché) au lieu de l'heuristique fragile actuelle (`source_matcher.py`, matching par nom de fichier/dossier, seuil `difflib` à 0.6).
+**Decision context**: the original idea was a generic chatbot hooked up to DeepSeek. It was dropped in favor of this PDF reader + grounded question approach, judged superior because the grounding becomes exact (the displayed PDF) instead of the current fragile heuristic (`source_matcher.py`, matching by file/folder name, `difflib` threshold at 0.6).
 
-C'est un **besoin totalement neuf** — ne remplace aucune consultation existante des cours.
+This is a **completely new need** — it does not replace any existing way of consulting course materials.
 
-## Contexte actuel (repo `flashcard-companion`)
+## Current context (repo `flashcard-companion`)
 
-- **Pas de lecteur PDF dans l'app** aujourd'hui — les PDF sources vivent dans `pdf_dir` (configuré dans `backend/config.yaml`), utilisés uniquement en extraction de texte pour le grounding de `explain.py` (explication de carte à la demande), jamais affichés tels quels.
-- **`backend/source_matcher.py`** : matching heuristique sujet de carte → fichier(s) PDF par nom (difflib, seuil 0.6), pas de traçabilité carte→document réelle (limite documentée en tête de fichier).
-- **`backend/pdf_context.py`** : construit un contexte texte tronqué (`max_pdf_context_chars`) à partir des PDF matchés, pour l'inclure dans le prompt Infercom.
-- **`backend/explain.py`** : pattern d'appel Infercom déjà en place (system prompt, `client.chat.completions.create`, modèle DeepSeek-V3.1) — référence directe pour le nouveau bouton d'aide.
-- **Hiérarchie des decks** dérivée des noms Anki `::` dans les `.apkg` (voir `docs/plans/settings-notifications-stats.md` pour le contexte SRS complet, non concerné ici).
-- **Header de `backend/static/index.html`** : icônes déjà présentes pour Réglages (gear), Stats (bar-chart), Examens — nouveau pattern d'icône à suivre pour l'entrée « Cours ».
-- **Pas de CDN autorisé** (règle projet) — tout rendu (PDF, icônes) doit être self-hosted, comme KaTeX l'est déjà pour les formules.
+- **No PDF reader in the app** today — source PDFs live in `pdf_dir` (configured in `backend/config.yaml`), used only for text extraction for `explain.py`'s grounding (on-demand card explanation), never displayed as-is.
+- **`backend/source_matcher.py`**: heuristic matching of card subject → PDF file(s) by name (difflib, threshold 0.6), no real card→document traceability (limitation documented at the top of the file).
+- **`backend/pdf_context.py`**: builds a truncated text context (`max_pdf_context_chars`) from matched PDFs, to include it in the Infercom prompt.
+- **`backend/explain.py`**: Infercom call pattern already in place (system prompt, `client.chat.completions.create`, DeepSeek-V3.1 model) — direct reference for the new help button.
+- **Deck hierarchy** derived from Anki `::` names in the `.apkg` files (see `docs/plans/settings-notifications-stats.md` for the full SRS context, not relevant here).
+- **Header of `backend/static/index.html`**: icons already present for Settings (gear), Stats (bar-chart), Exams — new icon pattern to follow for the "Courses" entry.
+- **No CDN allowed** (project rule) — all rendering (PDF, icons) must be self-hosted, as KaTeX already is for formulas.
 
 ## Settled decisions
 
-- **Deux points d'accès**, pas trois (le niveau carte seule est jugé redondant) :
-  1. **Icône header « Cours »** (pair de Réglages/Stats/Examens) → liste des PDF organisée selon la même hiérarchie de dossiers `::` que les decks → ouvre le PDF choisi dans le lecteur.
-  2. **Raccourci contextuel sur l'écran de révision** : un lien « voir le cours source » sur la carte, utilisant le matching existant `source_matcher.py` (subject → PDF), ouvre directement le même lecteur sur le bon PDF.
-- **Bouton flottant « besoin d'aide »** en bas à droite du lecteur PDF, icône étincelle (référence visuelle Gemini), pose une question groundée sur le PDF affiché — moteur DeepSeek-V3.1 via Infercom, même infra que `explain.py`.
-- **Aucun CDN** — rendu PDF self-hosté.
+- **Two access points**, not three (the card-only level is judged redundant):
+  1. **Header icon "Courses"** (peer of Settings/Stats/Exams) → list of PDFs organized using the same `::` folder hierarchy as the decks → opens the chosen PDF in the reader.
+  2. **Contextual shortcut on the review screen**: a "view source course" link on the card, using the existing `source_matcher.py` matching (subject → PDF), directly opens the same reader on the right PDF.
+- **Floating "need help" button** at the bottom right of the PDF reader, sparkle icon (Gemini visual reference), asks a grounded question about the displayed PDF — DeepSeek-V3.1 engine via Infercom, same infra as `explain.py`.
+- **No CDN** — self-hosted PDF rendering.
 
-## Open questions (à trancher avant/pendant l'implémentation — ne pas décider à la place de l'utilisateur)
+## Open questions (to be settled before/during implementation — do not decide on the user's behalf)
 
-- **Granularité du grounding** pour le bouton d'aide : tout le PDF, ou seulement la page/section actuellement visible à l'écran ? (Question posée en conversation, jamais répondue.)
-- **Modèle d'interaction** : question unique sans historique (stateless, comme `explain_card`) ou conversation multi-tours au sein d'une session de lecture PDF ?
-- **Cache des réponses** : les réponses du bouton d'aide sont-elles mises en cache (par PDF + question, comme `explain.py` cache par `card.guid`) ou toujours regénérées ?
-- **Bibliothèque de rendu PDF côté front** : à choisir en respectant la contrainte no-CDN (candidate évidente : PDF.js self-hosté, comme KaTeX l'est déjà — à confirmer, pas encore tranché).
-- **Un dossier deck peut avoir plusieurs PDF** (ex. version annotée + brute coexistent, cf. dédup par hash de fichier dans `flashcard-pipeline/state.py`) : l'écran « Cours » doit-il lister les deux séparément, ou n'afficher que la plus récente/annotée ?
-- **Endpoint de service des PDF** : `pdf_dir` n'est aujourd'hui utilisé que pour extraction de texte côté backend — il faut un nouvel endpoint pour streamer/servir le PDF brut au frontend (nom de route, gestion des chemins, sécurité d'accès aux fichiers — à définir).
+- **Grounding granularity** for the help button: the whole PDF, or only the page/section currently visible on screen? (Question raised in conversation, never answered.)
+- **Interaction model**: a single question with no history (stateless, like `explain_card`) or a multi-turn conversation within a PDF reading session?
+- **Response caching**: are the help button's responses cached (by PDF + question, like `explain.py` caches by `card.guid`) or always regenerated?
+- **Front-end PDF rendering library**: to be chosen while respecting the no-CDN constraint (obvious candidate: self-hosted PDF.js, as KaTeX already is — to be confirmed, not yet settled).
+- **A deck folder can have several PDFs** (e.g. annotated version + raw version coexist, cf. dedup by file hash in `flashcard-pipeline/state.py`): should the "Courses" screen list both separately, or only show the most recent/annotated one?
+- **PDF serving endpoint**: `pdf_dir` is today only used for text extraction on the backend side — a new endpoint is needed to stream/serve the raw PDF to the frontend (route name, path handling, file access security — to be defined).
 
 ## Batches (independent)
 
-### Batch 1 — Choix technique lecteur PDF (bloquant, à trancher avec l'utilisateur avant tout code)
-- Files: aucun encore.
-- Actions: proposer 1-2 options de rendu PDF self-hosté (poids, compatibilité WebView Android, absence de dépendance CDN), obtenir la décision de l'utilisateur.
-- Constraints: pas de CDN.
-- Done when: bibliothèque choisie et confirmée par l'utilisateur.
+### Batch 1 — PDF reader technical choice (blocking, to be settled with the user before any code)
+- Files: none yet.
+- Actions: propose 1-2 self-hosted PDF rendering options (weight, Android WebView compatibility, absence of CDN dependency), get the user's decision.
+- Constraints: no CDN.
+- Done when: library chosen and confirmed by the user.
 
-### Batch 2 — Endpoint de service PDF (backend)
-- Files: nouveau `backend/api/routes_pdf.py`, `backend/main.py` (include_router).
-- Actions: endpoint servant le contenu brut d'un PDF depuis `pdf_dir` (à sécuriser contre path traversal), plus un endpoint de listing des PDF disponibles organisés par dossier `::` (réutiliser la logique de hiérarchie de `routes_decks.py`, ne pas la dupliquer).
-- Constraints: ne pas dupliquer la logique d'arborescence des decks.
-- Verify: `curl` le endpoint de listing + téléchargement d'un PDF de test.
-- Done when: un PDF est récupérable et listable via l'API.
+### Batch 2 — PDF serving endpoint (backend)
+- Files: new `backend/api/routes_pdf.py`, `backend/main.py` (include_router).
+- Actions: endpoint serving the raw content of a PDF from `pdf_dir` (to be secured against path traversal), plus a listing endpoint for available PDFs organized by `::` folder (reuse the hierarchy logic from `routes_decks.py`, do not duplicate it).
+- Constraints: do not duplicate the deck tree logic.
+- Verify: `curl` the listing endpoint + download a test PDF.
+- Done when: a PDF can be fetched and listed via the API.
 
-### Batch 3 — Écran « Cours » (UI)
-- Files: nouveau `backend/static/courses.html` + JS, icône dans `common.js` (ICONS), lien dans `index.html` header (suivre exactement le pattern Stats/Examens).
-- Actions: liste des PDF par dossier `::`, clic → ouvre le lecteur (Batch 4).
-- Constraints: suivre les tokens CSS existants, dark mode, pas de CDN.
-- Verify: naviguer la liste, ouvrir un PDF de test.
-- Done when: l'utilisateur peut parcourir ses cours et en ouvrir un.
+### Batch 3 — "Courses" screen (UI)
+- Files: new `backend/static/courses.html` + JS, icon in `common.js` (ICONS), link in `index.html` header (follow the Stats/Exams pattern exactly).
+- Actions: list of PDFs by `::` folder, click → opens the reader (Batch 4).
+- Constraints: follow existing CSS tokens, dark mode, no CDN.
+- Verify: navigate the list, open a test PDF.
+- Done when: the user can browse their courses and open one.
 
-### Batch 4 — Lecteur PDF intégré
-- Files: nouveau `backend/static/pdf-viewer.html` + JS (dépend du choix du Batch 1).
-- Actions: affichage du PDF (bibliothèque choisie), navigation pages, appelé depuis Batch 3 et depuis le raccourci carte (Batch 6).
-- Constraints: self-hosté, respecte dark mode si la lib le permet.
-- Verify: ouvrir un PDF réel multi-pages, naviguer.
-- Done when: un PDF complet est lisible dans l'app.
+### Batch 4 — Integrated PDF reader
+- Files: new `backend/static/pdf-viewer.html` + JS (depends on the Batch 1 choice).
+- Actions: PDF display (chosen library), page navigation, called from Batch 3 and from the card shortcut (Batch 6).
+- Constraints: self-hosted, respects dark mode if the library allows it.
+- Verify: open a real multi-page PDF, navigate through it.
+- Done when: a complete PDF is readable in the app.
 
-### Batch 5 — Bouton « besoin d'aide » (backend + UI)
-- Files: nouveau `backend/api/routes_pdf_help.py` (ou extension de `routes_pdf.py`), `backend/static/pdf-viewer.html`/JS (bouton flottant + modal de question/réponse).
-- Actions: réutiliser le pattern `explain.py` (system prompt, appel Infercom DeepSeek-V3.1, grounding via `pdf_context.py`) pour une question posée sur le PDF affiché — granularité et cache **dépendent des Open Questions ci-dessus, à trancher avant d'écrire ce batch**.
-- Constraints: ne pas dupliquer le pattern d'appel Infercom d'`explain.py` — factoriser si pertinent.
-- Verify: poser une question sur un PDF de test, réponse groundée reçue.
-- Done when: l'utilisateur peut poser une question sur le PDF ouvert et recevoir une réponse pertinente.
+### Batch 5 — "Need help" button (backend + UI)
+- Files: new `backend/api/routes_pdf_help.py` (or extension of `routes_pdf.py`), `backend/static/pdf-viewer.html`/JS (floating button + question/answer modal).
+- Actions: reuse the `explain.py` pattern (system prompt, Infercom DeepSeek-V3.1 call, grounding via `pdf_context.py`) for a question asked about the displayed PDF — granularity and caching **depend on the Open Questions above, to be settled before writing this batch**.
+- Constraints: do not duplicate `explain.py`'s Infercom call pattern — factor it out if relevant.
+- Verify: ask a question about a test PDF, grounded answer received.
+- Done when: the user can ask a question about the open PDF and receive a relevant answer.
 
-### Batch 6 — Raccourci depuis l'écran de révision
+### Batch 6 — Shortcut from the review screen
 - Files: `backend/static/review.html` + `app.js`.
-- Actions: lien « voir le cours source » sur la carte, utilisant `source_matcher.py` (déjà existant, ne pas dupliquer), ouvre le lecteur du Batch 4 sur le bon PDF.
-- Constraints: ne pas créer de 3e point d'accès distinct — ce lien ouvre le même lecteur que Batch 3/4.
-- Verify: depuis une carte en révision, cliquer le lien → bon PDF ouvert.
-- Done when: accès en un clic depuis la révision vers le cours source.
+- Actions: "view source course" link on the card, using `source_matcher.py` (already existing, do not duplicate), opens the Batch 4 reader on the right PDF.
+- Constraints: do not create a 3rd distinct access point — this link opens the same reader as Batch 3/4.
+- Verify: from a card during review, click the link → correct PDF opens.
+- Done when: one-click access from review to the source course.
 
 ## Execution
-- Un subagent par batch ; **commit + `/clear` entre chaque batch**.
-- Batch 1 est bloquant : ne pas lancer Batch 2+ sans réponse de l'utilisateur sur le choix de bibliothèque.
-- Batch 5 dépend des réponses aux Open Questions (granularité, cache, historique) — s'arrêter et demander si non tranché avant ce batch.
-- Ordre conseillé : 1 (bloquant) → 2 → 3 → 4 → 6 → 5 (peut suivre 4 en parallèle une fois les open questions tranchées).
+- One subagent per batch; **commit + `/clear` between each batch**.
+- Batch 1 is blocking: do not launch Batch 2+ without the user's answer on the library choice.
+- Batch 5 depends on the answers to the Open Questions (granularity, caching, history) — stop and ask if not settled before this batch.
+- Recommended order: 1 (blocking) → 2 → 3 → 4 → 6 → 5 (can follow 4 in parallel once the open questions are settled).
 
 ## Known pitfalls
-- **Pas de CDN** (règle projet) — tout rendu PDF/icônes doit être self-hosté, comme KaTeX (`backend/static/vendor/katex`) l'est déjà.
-- **Ne pas dupliquer** : la hiérarchie `::` (déjà dans `routes_decks.py`), le matching subject→PDF (`source_matcher.py`), le pattern d'appel Infercom (`explain.py`) — tous à réutiliser, jamais réécrire.
-- **`curl` cassé sur le Termux du tel** — non pertinent ici (pas de script Termux dans ce plan), mais rappel si un futur batch en ajoute un.
-- **Jamais de trailer `Co-Authored-By`** (règle projet).
+- **No CDN** (project rule) — all PDF/icon rendering must be self-hosted, as KaTeX (`backend/static/vendor/katex`) already is.
+- **Do not duplicate**: the `::` hierarchy (already in `routes_decks.py`), the subject→PDF matching (`source_matcher.py`), the Infercom call pattern (`explain.py`) — all to be reused, never rewritten.
+- **`curl` broken on the phone's Termux** — not relevant here (no Termux script in this plan), but a reminder if a future batch adds one.
+- **Never a `Co-Authored-By` trailer** (project rule).

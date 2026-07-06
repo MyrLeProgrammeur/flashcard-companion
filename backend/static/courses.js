@@ -1,8 +1,8 @@
-/* Cours: charge /api/courses/tree (arbre récursif du vrai dossier pdf_dir,
-   Cours/<Matière>/<sous-dossier?>/fichier.pdf) et l'affiche en drill-down,
-   même pattern que l'arbre de decks sur l'accueil (index.html + /api/tree).
-   Clic sur un dossier -> descend d'un niveau ; clic sur un PDF ->
-   pdf-viewer.html?path=... (page ajoutée en Batch 4). */
+/* Courses: loads /api/courses/tree (recursive tree of the actual pdf_dir folder,
+   Cours/<Matière>/<sub-folder?>/file.pdf) and displays it in drill-down,
+   same pattern as the deck tree on the home screen (index.html + /api/tree).
+   Clicking a folder -> goes down one level; clicking a PDF ->
+   pdf-viewer.html?path=... (page added in Batch 4). */
 
 const el = (id) => document.getElementById(id);
 
