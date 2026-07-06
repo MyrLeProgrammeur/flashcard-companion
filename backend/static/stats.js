@@ -1,7 +1,7 @@
-/* Statistiques: charge /api/stats/overview + /api/stats/cards, dessine
-   la heatmap calendaire (grille de div maison, pas de lib de graphes),
-   et rend le tableau par carte triable. Export = liens directs vers
-   /api/stats/export?format=csv|json (Content-Disposition déjà géré côté API). */
+/* Stats: loads /api/stats/overview + /api/stats/cards, draws
+   the calendar heatmap (homemade div grid, no charting lib),
+   and renders the sortable per-card table. Export = direct links to
+   /api/stats/export?format=csv|json (Content-Disposition already handled API-side). */
 
 const el = (id) => document.getElementById(id);
 

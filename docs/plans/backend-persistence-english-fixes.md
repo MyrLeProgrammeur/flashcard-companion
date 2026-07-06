@@ -25,7 +25,7 @@ Already committed this session — **do NOT redo**:
 - No `Co-Authored-By: Claude` trailer anywhere (project rule).
 
 ## Open questions (do NOT decide — ask Matheo)
-- **Batch-5 grounding sign-off**: the "besoin d'aide" button was implemented autonomously as *whole-PDF grounding, stateless, cache keyed on `(rel_path, question)`*, mirroring `explain.py`. Matheo never confirmed this. Before touching it, ask: keep as-is, or change grounding granularity / add multi-turn? (memory `project-pdf-reader-execution`). This is not a code batch until answered.
+- **Batch-5 grounding sign-off**: the "need help" button was implemented autonomously as *whole-PDF grounding, stateless, cache keyed on `(rel_path, question)`*, mirroring `explain.py`. Matheo never confirmed this. Before touching it, ask: keep as-is, or change grounding granularity / add multi-turn? (memory `project-pdf-reader-execution`). This is not a code batch until answered.
 - If Batch 1 diagnosis shows the app-launch autostart needs a **Kotlin change**, confirm with Matheo before an APK rebuild (bigger blast radius than a script fix).
 
 ## Batches (independent)
@@ -53,7 +53,7 @@ Already committed this session — **do NOT redo**:
 - Verify: sandbox run (see Execution → pipeline sandbox) on `~/Sync/Cours/<some English course>` → the logged theme/deck names are English (`[Matière::<English theme>] +N cards`), no French.
 - Done when: a fresh run produces only English theme names.
 
-### Batch 3 — Pipeline robustness cleanup (broutilles)
+### Batch 3 — Pipeline robustness cleanup (loose ends)
 - Files: `../flashcard-pipeline/json_utils.py`, `../flashcard-pipeline/agents/aggregator.py` (determinism), `../flashcard-pipeline/pipeline.py` (annotation).
 - Actions:
   - **(a) JSON `Invalid \escape` hardening** — `parse_json_response` in `json_utils.py` already retries once by escaping invalid backslashes (`re.sub(r'\\(?!["\\/bfnrtu])', …)`), but a problem-card batch still failed this session (`Invalid \escape: line 5 column 71`, theme "Intervalles de confiance") → the whole batch was silently dropped (caught in `pipeline.py build_theme` → `[]`). Harden the LaTeX-backslash handling so realistic builder output parses (e.g. apply the escape-fix also inside the first attempt, or make the regex robust to `\\` sequences and `\(`/`\[` math delimiters). **Add `../flashcard-pipeline/tests/test_json_utils.py`** (no tests dir exists yet) with a payload containing raw LaTeX backslashes (`\frac`, `\alpha`, `\(`, `\sigma^2`) that currently throws, asserting it now parses.

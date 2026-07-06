@@ -47,18 +47,18 @@ class MainActivity : Activity() {
             webViewClient = WebViewClient()
         }
 
-        setContentView(loadingScreen("Connexion au backend…"))
+        setContentView(loadingScreen("Connecting to backend…"))
         bootFlow()
     }
 
     /** Health check; if down, trigger the Termux backend once, poll until it's
      *  up, then load the UI. Falls back to a manual screen if it never comes up. */
     private fun bootFlow() {
-        runOnUiThread { setContentView(loadingScreen("Connexion au backend…")) }
+        runOnUiThread { setContentView(loadingScreen("Connecting to backend…")) }
         Thread {
             if (isBackendHealthy()) { showWebView(); return@Thread }
 
-            runOnUiThread { setContentView(loadingScreen("Démarrage du backend…")) }
+            runOnUiThread { setContentView(loadingScreen("Starting backend…")) }
             tryRunCommand()
 
             var attempts = AUTOSTART_ATTEMPTS
@@ -109,14 +109,14 @@ class MainActivity : Activity() {
             setPadding(48, 96, 48, 48)
         }
         layout.addView(TextView(this).apply {
-            text = "Le backend n'a pas démarré automatiquement.\n\n" +
-                "Ouvre Termux et lance :\n" +
+            text = "The backend didn't start automatically.\n\n" +
+                "Open Termux and run:\n" +
                 "bash ~/flashcard-companion/backend/termux/start.sh\n\n" +
-                "Puis appuie sur Réessayer."
+                "Then tap Retry."
             textSize = 16f
         })
         layout.addView(Button(this).apply {
-            text = "Réessayer"
+            text = "Retry"
             setOnClickListener { bootFlow() }
         })
         return layout

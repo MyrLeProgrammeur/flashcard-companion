@@ -1,7 +1,7 @@
-/* Lecteur PDF minimal — PDF.js core only (pdf.min.mjs + pdf.worker.min.mjs),
-   aucune UI Mozilla (pas de viewer.html/css/js). Rendu continu : toutes les
-   pages sont empilées verticalement, fit-to-width, pensé pour la WebView
-   Android de l'app. */
+/* Minimal PDF reader — PDF.js core only (pdf.min.mjs + pdf.worker.min.mjs),
+   no Mozilla UI (no viewer.html/css/js). Continuous rendering: all
+   pages are stacked vertically, fit-to-width, designed for the app's
+   Android WebView. */
 
 import * as pdfjsLib from "/vendor/pdfjs/pdf.min.mjs";
 
@@ -103,7 +103,7 @@ async function load() {
   }
 }
 
-/* ---------- "besoin d'aide" chat sheet (Batch 5, multi-turn) ---------- */
+/* ---------- "help needed" chat sheet (Batch 5, multi-turn) ---------- */
 let helpHistory = [];
 const transcriptEl = el("help-transcript");
 

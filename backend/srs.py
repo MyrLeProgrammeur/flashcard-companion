@@ -68,8 +68,8 @@ def review(
 
     Intervals for the very first pass (reps 0 -> 1) are graduated per rating
     (settings.hard_days/good_days/easy_days) so Again/Hard/Good/Easy diverge
-    on a fresh card instead of all collapsing to "1 day" (see plan's "Bug
-    « 1 j » dégénéré"). Beyond that, the SM-2 shape (fixed 2nd interval,
+    on a fresh card instead of all collapsing to "1 day" (see plan's
+    "degenerate '1 day' bug"). Beyond that, the SM-2 shape (fixed 2nd interval,
     interval*ease afterwards) is unchanged, with an Easy bonus multiplier
     applied on mature cards.
     """
