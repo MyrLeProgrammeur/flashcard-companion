@@ -10,24 +10,148 @@ button (Infercom, DeepSeek-V3.1) grounded in the card's source PDF.
 
 See `docs/plans/` for the design history and ongoing decisions.
 
+## How it works
+
+**Data flow.** `flashcard-pipeline` (a separate project, run on the PC) turns your
+course PDFs into flashcard decks and writes them as `.apkg` files. Syncthing
+mirrors two folders from PC to phone, read-only from the app's point of view:
+
+- the generated `.apkg` decks (`paths.apkg_dir` in `backend/config.yaml`)
+- the source course PDFs (`paths.pdf_dir`), organized as `Cours/<Matière>/...`
+
+The backend never writes into either synced folder — all of this app's own state
+(SRS scheduling, review log, resolved PDF matches) lives in a separate SQLite DB
+under `paths.data_dir`, deliberately **outside** any Syncthing folder so the app's
+local state can't create sync conflicts.
+
+**Card identity.** Cards are keyed by a stable GUID
+(`sha1(subject\x1ftheme\x1fquestion)`, computed by the pipeline's `db_writer.py`),
+never by the Anki-internal `notes.id`. This is what lets the app track review
+history and SRS scheduling across re-generated `.apkg` files.
+
+**Review flow.** The web UI (served by the backend, wrapped by the Android WebView
+shell) lists decks by folder/subject, and reviews cards using a minimal SM-2
+scheduler (`backend/srs.py`) — pure functions over state in `backend/srs_store.py`.
+Rating buttons (Again/Hard/Good/Easy) map to SM-2 quality scores and graduated
+intervals, which are user-configurable (see Settings in the app).
+
+**AI explanation button.** When you tap "explain" on a card, the backend:
+1. best-effort matches the card's deck path against filenames/folder names under
+   `pdf_dir` (`backend/source_matcher.py` — a fuzzy-string MVP heuristic, not a
+   guaranteed per-card link — there's no precise upstream traceability yet);
+2. if a source PDF is found, extracts relevant page context around the match
+   (`backend/pdf_context.py`) and sends it to the model as grounding;
+3. if no PDF match is found, falls back to explaining from the card's
+   question/answer text alone;
+4. calls Infercom's DeepSeek-V3.1 (`backend/explain.py`) and returns the explanation.
+
+**Language.** The UI has a French/English toggle (`backend/static/i18n.js`),
+independent of the codebase's own language (comments/docs are English).
+
+## Prerequisites
+
+- **PC**: Python 3.11+, for pipeline dev/UI iteration only — the backend does not
+  run long-term on the PC.
+- **Phone**: [Termux](https://termux.dev/) (F-Droid build, not the abandoned Play
+  Store one) + [Termux:Boot](https://f-droid.org/packages/com.termux.boot/) if you
+  want auto-start on reboot, and Syncthing set up to mirror the `.apkg` and PDF
+  folders from your PC to the phone's shared storage.
+- An Infercom API key (`INFERCOM_API_KEY`) for the AI explanation feature.
+
 ## Quick start (PC dev)
+
+Use this to iterate on the UI/backend from a PC browser, without touching the
+phone at all:
 
 ```bash
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # set INFERCOM_API_KEY
+```
+
+Edit `backend/config.yaml` so `paths.apkg_dir` / `paths.pdf_dir` point at local
+folders with some test `.apkg`/PDF files (or point them at a synced folder if
+you already have one on the PC).
+
+```bash
 uvicorn main:app --reload --port 8420
 ```
 
-Open `http://localhost:8420/` in a browser to iterate on the UI without the phone.
+Open `http://localhost:8420/` in a browser. Run tests with `pytest backend/tests/`.
 
-## Deployment on the phone (Termux)
+## Full install (phone, Termux)
 
-```bash
-pkg install python
-pip install -r backend/requirements.txt
-bash backend/termux/start.sh
+This is what actually runs day to day — the backend lives on the phone, the
+Android shell is just a WebView pointed at `127.0.0.1`.
+
+1. **Install Termux** (F-Droid) and, optionally, **Termux:Boot** for auto-start.
+2. **Set up Syncthing on the phone** so the pipeline's output folders (`.apkg`
+   decks and source PDFs) land under shared storage, matching the paths you'll
+   set in `config.yaml` below.
+3. **Grant storage access once**, from inside Termux:
+   ```bash
+   termux-setup-storage
+   ```
+4. **Clone the repo and configure paths/secrets**:
+   ```bash
+   git clone https://github.com/MyrLeProgrammeur/flashcard-companion.git ~/flashcard-companion
+   cd ~/flashcard-companion/backend
+   cp .env.example .env
+   ```
+   Edit `.env` and set `INFERCOM_API_KEY` — this file must stay **only** on the
+   phone, outside any Syncthing folder, never committed.
+   Edit `config.yaml`'s `paths.apkg_dir` / `paths.pdf_dir` to match your actual
+   Syncthing folders on the device (absolute paths under
+   `/storage/emulated/0/...` work directly once step 3 is done).
+5. **Start the backend manually** the first time to confirm it works:
+   ```bash
+   bash backend/termux/start.sh
+   ```
+   This creates the venv, installs dependencies, and runs uvicorn on
+   `127.0.0.1:8420`. Leave it running, or Ctrl-C once you've confirmed it starts
+   cleanly.
+6. **(Optional) enable auto-start on boot** via Termux:Boot: open the
+   Termux:Boot app once to arm the boot receiver, then make sure
+   `backend/termux/boot/start-flashcard-backend.sh` is deployed to
+   `~/.termux/boot/` on the device. This script also re-arms the daily due-card
+   and exam-results notification jobs. It requires
+   `allow-external-apps=true` in `~/.termux/termux.properties` and Termux's
+   `RUN_COMMAND` permission granted to the Android app (the app requests this
+   automatically on first launch).
+7. **Build and install the Android app**. No Gradle wrapper is committed — build
+   with a local JDK 17 + Android SDK toolchain (AGP/Gradle 8.9 reject newer JDKs):
+   ```bash
+   cd android
+   JAVA_HOME=<path-to-jdk-17> ANDROID_HOME=<path-to-android-sdk> \
+     <path-to-gradle-8.9>/bin/gradle assembleDebug --no-daemon
+   adb install -r app/build/outputs/apk/debug/app-debug.apk
+   ```
+   `android/local.properties` (gitignored) must point `sdk.dir` at your SDK path.
+   If reinstalling over a build signed with a different debug key fails with
+   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, run
+   `adb uninstall com.matheo.flashcardcompanion` first (app state is server-side,
+   so this only resets local theme/language prefs).
+
+   Launch it — it shows a loading screen while it health-checks the backend,
+   triggers Termux to start it if needed (via the `RUN_COMMAND` permission set
+   up in step 6), then loads the web UI. If the backend never comes up, a
+   fallback screen tells you to open Termux and run `start.sh` manually.
+
+## Repo layout
+
 ```
-
-See `backend/termux/boot/` for auto-start on reboot (Termux:Boot, optional).
+backend/
+  main.py              FastAPI entrypoint, wires config + routes
+  config.yaml           paths (apkg/pdf/data dirs), Infercom model, server host/port
+  srs.py, srs_store.py  SM-2 scheduler + its SQLite-backed state
+  source_matcher.py     fuzzy deck-path <-> source PDF matching (MVP heuristic)
+  pdf_context.py         extracts PDF text context for a matched card
+  explain.py             Infercom call for the AI explanation button
+  api/                   route modules (decks, review, explain, settings, stats, exams, pdf)
+  static/                web UI (vanilla JS/HTML, i18n.js for the fr/en toggle)
+  termux/                start.sh (manual start) + boot/ (auto-start, notifications)
+android/
+  app/src/main/java/.../MainActivity.kt   WebView shell + backend health-check/autostart
+docs/plans/            design history and open decisions
+```
