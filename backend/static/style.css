@@ -614,7 +614,41 @@ button:active,
 }
 .chat-bubble-assistant.md { padding: 12px 14px; }
 .chat-bubble-assistant.md p:last-child { margin-bottom: 0; }
-.chat-bubble-thinking { padding: 14px; }
+.chat-bubble-thinking { padding: 14px 16px; }
+
+/* three-dot "typing" indicator while the AI is answering */
+.typing-dots { display: flex; gap: 5px; align-items: center; height: 8px; }
+.typing-dots span {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--muted-2);
+  animation: typing-bounce 1.2s infinite ease-in-out both;
+}
+.typing-dots span:nth-child(1) { animation-delay: -0.24s; }
+.typing-dots span:nth-child(2) { animation-delay: -0.12s; }
+@keyframes typing-bounce {
+  0%, 80%, 100% { opacity: .35; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-4px); }
+}
+
+/* apparition of the answer — reveal top-to-bottom with a soft fading edge */
+@property --chat-reveal {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+.chat-bubble-enter {
+  animation: chat-bubble-reveal .85s ease-out both;
+  -webkit-mask-image: linear-gradient(to bottom, #000 var(--chat-reveal), transparent calc(var(--chat-reveal) + 14%));
+  mask-image: linear-gradient(to bottom, #000 var(--chat-reveal), transparent calc(var(--chat-reveal) + 14%));
+}
+@keyframes chat-bubble-reveal {
+  from { --chat-reveal: 0%; }
+  to { --chat-reveal: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-bubble-enter, .typing-dots span { animation: none; }
+  .chat-bubble-enter { -webkit-mask-image: none; mask-image: none; }
+}
 .chat-bubble-error {
   background: var(--degr-band-bg); border: 1px solid var(--degr-band-border);
   color: var(--degr-band-ink);

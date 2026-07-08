@@ -111,21 +111,28 @@ function scrollTranscriptToEnd() {
   transcriptEl.scrollTop = transcriptEl.scrollHeight;
 }
 
+// Pin a bubble's top to the top of the transcript so a long answer
+// is read from its start (not landing at the end).
+function scrollBubbleToTop(bubble) {
+  const delta = bubble.getBoundingClientRect().top - transcriptEl.getBoundingClientRect().top;
+  transcriptEl.scrollTo({ top: transcriptEl.scrollTop + delta, behavior: "smooth" });
+}
+
 function appendUserBubble(content) {
   const bubble = document.createElement("div");
   bubble.className = "chat-bubble chat-bubble-user";
   bubble.textContent = content;
   transcriptEl.appendChild(bubble);
   scrollTranscriptToEnd();
+  return bubble;
 }
 
 function appendAssistantBubble(content) {
   const bubble = document.createElement("div");
-  bubble.className = "chat-bubble chat-bubble-assistant md";
+  bubble.className = "chat-bubble chat-bubble-assistant md chat-bubble-enter";
   bubble.innerHTML = renderMarkdown(content || "");
   transcriptEl.appendChild(bubble);
   renderMath(bubble);
-  scrollTranscriptToEnd();
   return bubble;
 }
 
@@ -133,7 +140,7 @@ function appendThinkingBubble() {
   const bubble = document.createElement("div");
   bubble.className = "chat-bubble chat-bubble-assistant chat-bubble-thinking";
   bubble.innerHTML =
-    '<div class="skeleton"><div class="sk-line"></div><div class="sk-line"></div><div class="sk-line short"></div></div>';
+    '<div class="typing-dots"><span></span><span></span><span></span></div>';
   transcriptEl.appendChild(bubble);
   scrollTranscriptToEnd();
   return bubble;
@@ -172,7 +179,7 @@ el("pdf-help-form").addEventListener("submit", async (e) => {
   questionEl.value = "";
 
   helpHistory.push({ role: "user", content: question });
-  appendUserBubble(question);
+  const userBubble = appendUserBubble(question);
   const thinkingBubble = appendThinkingBubble();
   el("help-sheet-foot").textContent = "";
   const t0 = performance.now();
@@ -189,6 +196,7 @@ el("pdf-help-form").addEventListener("submit", async (e) => {
     thinkingBubble.remove();
     helpHistory.push({ role: "assistant", content: data.answer || "" });
     appendAssistantBubble(data.answer || "");
+    scrollBubbleToTop(userBubble);
     el("help-sheet-foot").textContent =
       `${data.model || t("pdf.modelFallback")} · ${data.cached ? t("pdf.cached") : t("pdf.freshGen")} · ${ms} ms`;
   } catch {
