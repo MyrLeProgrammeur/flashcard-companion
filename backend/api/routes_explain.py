@@ -12,8 +12,18 @@ class ExplainFeedback(BaseModel):
     lang: str = "fr"
 
 
+class ExplainBody(BaseModel):
+    critique: str | None = None
+
+
 @router.post("/api/cards/{guid}/explain")
-def post_explain(guid: str, request: Request, force: bool = False, lang: str = "fr"):
+def post_explain(
+    guid: str,
+    request: Request,
+    force: bool = False,
+    lang: str = "fr",
+    body: ExplainBody | None = None,
+):
     cfg = request.app.state.cfg
     store = request.app.state.store
     client = request.app.state.infercom_client
@@ -36,6 +46,7 @@ def post_explain(guid: str, request: Request, force: bool = False, lang: str = "
         max_pdf_context_chars=cfg["explain"]["max_pdf_context_chars"],
         force=force,
         lang=lang,
+        critique=body.critique if body else None,
     )
     return result
 

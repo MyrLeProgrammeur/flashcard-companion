@@ -37,10 +37,13 @@ def explain_card(
     max_pdf_context_chars: int,
     force: bool = False,
     lang: str = "fr",
+    critique: str | None = None,
 ) -> dict:
     lang = lang if lang in LANG_DIRECTIVE else "fr"
     cache_guid = f"{card.guid}\x1f{lang}"
-    if not force:
+    # A critique is a 👎 "redo it" — always regenerate, never serve the cache
+    # the user just rejected.
+    if not force and not critique:
         cached = store.get_explanation(cache_guid)
         if cached is not None:
             return {**cached, "cached": True}
@@ -62,6 +65,14 @@ def explain_card(
         user_prompt += f"\nExtraits du cours source:\n{pdf_context}"
     else:
         user_prompt += "\n(Aucun extrait de cours source trouvé — explique à partir de la carte seule.)"
+
+    if critique and critique.strip():
+        user_prompt += (
+            "\n\nL'explication précédente a été jugée insuffisante par l'utilisateur. "
+            f"Ce qui n'allait pas : {critique.strip()}\n"
+            "Réécris une nouvelle explication qui corrige spécifiquement ce point, "
+            "sans répéter la version précédente."
+        )
 
     response = client.chat.completions.create(
         model=model,

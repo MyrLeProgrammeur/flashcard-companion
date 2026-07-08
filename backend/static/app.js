@@ -137,14 +137,15 @@ function showSkeleton() {
 
 function baseName(path) { return (path || "").split("/").pop(); }
 
-el("explain-btn").addEventListener("click", async () => {
-  const c = queue[idx];
-  if (!c) return;
-  openSheet();
+async function runExplain(guid, critique) {
   showSkeleton();
   const t0 = performance.now();
   try {
-    const res = await fetch(`/api/cards/${c.guid}/explain?lang=${getLang()}`, { method: "POST" });
+    const res = await fetch(`/api/cards/${guid}/explain?lang=${getLang()}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ critique: critique || null }),
+    });
     const data = await res.json();
     const ms = Math.round(performance.now() - t0);
     const grounded = Array.isArray(data.source_files) && data.source_files.length > 0;
@@ -167,11 +168,18 @@ el("explain-btn").addEventListener("click", async () => {
     renderMath(el("explain-md"));
     el("foot-meta").textContent =
       `${data.model || t("pdf.modelFallback")} · ${data.cached ? t("pdf.cached") : t("pdf.freshGen")} · ${ms} ms`;
-    armFeedback(c.guid, getLang());
+    armFeedback(guid, getLang());
   } catch {
     el("explain-md").innerHTML = `<p>${t("review.explainError")}</p>`;
     el("foot-meta").textContent = t("common.error");
   }
+}
+
+el("explain-btn").addEventListener("click", () => {
+  const c = queue[idx];
+  if (!c) return;
+  openSheet();
+  runExplain(c.guid, null);
 });
 
 /* ---------- explain feedback (👍/👎, pure telemetry) ---------- */
@@ -193,25 +201,51 @@ function armFeedback(guid, lang) {
   el("fb-thanks").classList.add("hidden");
 }
 
-function sendFeedback(btn) {
-  if (!fbCtx || fbTimer) return; // ignore clicks while the toast is showing
-  const vote = parseInt(btn.dataset.vote, 10);
-  // swap the thumbs for a transient "thanks", then revert to neutral
-  el("fb-ask").classList.add("hidden");
-  el("fb-thanks").classList.remove("hidden");
-  fbTimer = setTimeout(() => {
-    fbTimer = null;
-    el("explain-feedback").classList.add("hidden");
-  }, 2000);
+function logVote(vote) {
+  if (!fbCtx) return;
   fetch(`/api/cards/${fbCtx.guid}/explain/feedback`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ vote, lang: fbCtx.lang }),
   }).catch(() => { /* pure telemetry: swallow, the UI already acknowledged */ });
 }
+
+function sendFeedback(btn) {
+  if (!fbCtx || fbTimer) return; // ignore clicks while the toast is showing
+  const vote = parseInt(btn.dataset.vote, 10);
+  logVote(vote);
+  if (vote < 0) { openCritique(); return; } // 👎 -> ask what was wrong, then regenerate
+  // 👍: swap the thumbs for a transient "thanks", then hide the block
+  el("fb-ask").classList.add("hidden");
+  el("fb-thanks").classList.remove("hidden");
+  fbTimer = setTimeout(() => {
+    fbTimer = null;
+    el("explain-feedback").classList.add("hidden");
+  }, 2000);
+}
 ["fb-up", "fb-down"].forEach((id) =>
   el(id).addEventListener("click", () => sendFeedback(el(id)))
 );
+
+/* ---------- 👎 critique -> regenerate ---------- */
+function openCritique() {
+  el("critique-input").value = "";
+  el("critique-overlay").classList.add("open");
+  el("critique-modal").classList.add("open");
+  el("critique-input").focus();
+}
+function closeCritique() {
+  el("critique-overlay").classList.remove("open");
+  el("critique-modal").classList.remove("open");
+}
+el("critique-cancel").addEventListener("click", closeCritique);
+el("critique-overlay").addEventListener("click", closeCritique);
+el("critique-send").addEventListener("click", () => {
+  const guid = fbCtx && fbCtx.guid;
+  const critique = el("critique-input").value.trim();
+  closeCritique();
+  if (guid && critique) runExplain(guid, critique);
+});
 
 /* ---------- health: pill tracks the AI link, redirect only if backend drops ---------- */
 startHealthPoll(({ backend, ai }) => {

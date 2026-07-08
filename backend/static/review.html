@@ -97,6 +97,17 @@
     </div>
   </div>
 
+  <!-- 👎 critique modal: ask what was wrong, then regenerate -->
+  <div class="sheet-overlay" id="critique-overlay"></div>
+  <div class="critique-modal" id="critique-modal">
+    <h3 data-i18n="review.critiqueTitle">Qu'est-ce qui n'allait pas ?</h3>
+    <textarea id="critique-input" rows="3" placeholder="Ce qui manquait ou était faux…" data-i18n-attr="placeholder:review.critiquePlaceholder"></textarea>
+    <div class="critique-actions">
+      <button class="critique-cancel" id="critique-cancel" data-i18n="common.cancel">Annuler</button>
+      <button class="critique-send" id="critique-send" data-i18n="review.critiqueSend">Régénérer</button>
+    </div>
+  </div>
+
   <script src="/app.js" defer></script>
 </body>
 </html>
