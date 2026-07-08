@@ -201,8 +201,7 @@ function sendFeedback(btn) {
   el("fb-thanks").classList.remove("hidden");
   fbTimer = setTimeout(() => {
     fbTimer = null;
-    el("fb-thanks").classList.add("hidden");
-    el("fb-ask").classList.remove("hidden");
+    el("explain-feedback").classList.add("hidden");
   }, 2000);
   fetch(`/api/cards/${fbCtx.guid}/explain/feedback`, {
     method: "POST",
