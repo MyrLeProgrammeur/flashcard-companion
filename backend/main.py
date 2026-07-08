@@ -58,19 +58,19 @@ async def no_store(request, call_next):
 
 @app.get("/api/health")
 def health():
-    checks = {}
-
+    # The header pill reflects reachability of the AI backend (Infercom) — i.e.
+    # real internet + a valid key. If this endpoint answers at all, the local
+    # server is already up; the frontend derives "backend up" from that and only
+    # uses `ai` below to color the pill. A cheap models.list() probe: no token
+    # cost, short timeout so a dead link can't hang the poll.
+    ai = "unreachable"
     try:
-        app.state.store.conn.execute("SELECT 1").fetchone()
-        checks["db"] = "ok"
-    except Exception as exc:
-        checks["db"] = f"error: {exc}"
+        app.state.infercom_client.with_options(timeout=5.0).models.list()
+        ai = "ok"
+    except Exception:
+        ai = "unreachable"
 
-    checks["infercom_api_key"] = "ok" if os.environ.get("INFERCOM_API_KEY") else "missing"
-
-    if all(v == "ok" for v in checks.values()):
-        return {"status": "ok"}
-    return {"status": "degraded", "checks": checks}
+    return {"status": "ok" if ai == "ok" else "degraded", "ai": ai}
 
 
 app.mount("/", StaticFiles(directory=Path(__file__).parent / "static", html=True), name="static")

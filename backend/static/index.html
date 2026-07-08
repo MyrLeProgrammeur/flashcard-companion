@@ -203,11 +203,11 @@
       const home = document.getElementById("home");
       const offline = document.getElementById("offline");
 
-      startHealthPoll((online) => {
-        renderHealthPill(document.getElementById("health"), online);
-        home.classList.toggle("hidden", !online);
-        offline.classList.toggle("hidden", online);
-        if (online) loadTree();
+      startHealthPoll(({ backend, ai }) => {
+        renderHealthPill(document.getElementById("health"), ai);
+        home.classList.toggle("hidden", !backend);
+        offline.classList.toggle("hidden", backend);
+        if (backend) loadTree();
       });
 
       // Refresh the deck list whenever the app comes back to the foreground, so a

@@ -172,12 +172,12 @@ el("explain-btn").addEventListener("click", async () => {
   }
 });
 
-/* ---------- health: redirect to blocking screen if backend drops ---------- */
-startHealthPoll((online) => {
+/* ---------- health: pill tracks the AI link, redirect only if backend drops ---------- */
+startHealthPoll(({ backend, ai }) => {
   const pill = el("health");
-  pill.classList.toggle("offline", !online);
+  pill.classList.toggle("offline", !ai);
   pill.innerHTML = '<span class="dot"></span>';
-  if (!online) location.href = "/";
+  if (!backend) location.href = "/";
 });
 
 loadQueue();

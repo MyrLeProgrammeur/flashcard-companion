@@ -46,12 +46,17 @@ function toggleTheme() {
 applyTheme(currentTheme());
 
 /* ---------- backend health ---------- */
+// Two independent signals:
+//   backend — did the local server answer at all (drives the offline screen)
+//   ai      — is Infercom reachable, i.e. internet + valid key (drives the pill)
 async function pingHealth() {
   try {
     const res = await fetch("/api/health", { cache: "no-store" });
-    return res.ok;
+    if (!res.ok) return { backend: false, ai: false };
+    const data = await res.json().catch(() => ({}));
+    return { backend: true, ai: data.ai === "ok" };
   } catch {
-    return false;
+    return { backend: false, ai: false };
   }
 }
 
@@ -133,14 +138,15 @@ window.addEventListener("DOMContentLoaded", () => {
   initMenu();
 });
 
-/* Polls /api/health; calls cb(online) on every change (and once at start). */
+/* Polls /api/health; calls cb({backend, ai}) on every change (and once at start). */
 function startHealthPoll(cb, intervalMs = 10000) {
   let last = null;
   const tick = async () => {
-    const online = await pingHealth();
-    if (online !== last) {
-      last = online;
-      cb(online);
+    const s = await pingHealth();
+    const key = `${s.backend}|${s.ai}`;
+    if (key !== last) {
+      last = key;
+      cb(s);
     }
   };
   tick();
