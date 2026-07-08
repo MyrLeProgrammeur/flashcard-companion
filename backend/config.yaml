@@ -14,7 +14,7 @@ paths:
 
 infercom:
   base_url: "https://api.infercom.ai/v1"
-  explain_model: "DeepSeek-V3.1"
+  explain_model: "DeepSeek-V3.2"
 
 server:
   host: "127.0.0.1"

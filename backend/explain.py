@@ -1,5 +1,5 @@
 """
-Builds the "explain in depth" prompt and calls Infercom's DeepSeek-V3.1
+Builds the "explain in depth" prompt and calls Infercom's DeepSeek-V3.2
 (reasoning group), grounded in matched source PDF text when available.
 Falls back to explaining from the card's own fields if no PDF match is
 found — the button must never hard-fail.

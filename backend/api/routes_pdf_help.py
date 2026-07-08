@@ -1,7 +1,7 @@
 """
 "Besoin d'aide" floating button on the PDF viewer (Batch 5): a multi-turn
 chat grounded in the whole currently-open course PDF, answered via
-Infercom DeepSeek-V3.1 — same infra/shape as explain.py's card-explanation
+Infercom DeepSeek-V3.2 — same infra/shape as explain.py's card-explanation
 feature, but scoped to one resolved PDF file instead of a card's matched
 sources. Every turn re-sends the full conversation; the PDF context stays
 in the system message so each follow-up remains grounded.
