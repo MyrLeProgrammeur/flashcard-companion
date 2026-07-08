@@ -128,7 +128,8 @@ el("sheet-overlay").addEventListener("click", closeSheet);
 function showSkeleton() {
   el("degr-band").classList.add("hidden");
   el("src-chip").classList.add("hidden");
-  el("sheet-foot").textContent = "";
+  el("foot-meta").textContent = "";
+  resetFeedback();
   el("explain-md").innerHTML =
     '<div class="skeleton"><div class="sk-line"></div><div class="sk-line"></div><div class="sk-line short"></div>' +
     '<div class="sk-line" style="margin-top:22px"></div><div class="sk-line"></div><div class="sk-line short"></div></div>';
@@ -164,13 +165,51 @@ el("explain-btn").addEventListener("click", async () => {
 
     el("explain-md").innerHTML = renderMarkdown(data.explanation || "");
     renderMath(el("explain-md"));
-    el("sheet-foot").textContent =
+    el("foot-meta").textContent =
       `${data.model || t("pdf.modelFallback")} · ${data.cached ? t("pdf.cached") : t("pdf.freshGen")} · ${ms} ms`;
+    armFeedback(c.guid, getLang());
   } catch {
     el("explain-md").innerHTML = `<p>${t("review.explainError")}</p>`;
-    el("sheet-foot").textContent = t("common.error");
+    el("foot-meta").textContent = t("common.error");
   }
 });
+
+/* ---------- explain feedback (👍/👎, pure telemetry, intra-open lock) ---------- */
+let fbCtx = null; // {guid, lang} of the currently displayed explanation
+
+function resetFeedback() {
+  fbCtx = null;
+  el("explain-feedback").classList.add("hidden");
+  el("fb-thanks").classList.add("hidden");
+  ["fb-up", "fb-down"].forEach((id) => {
+    const b = el(id);
+    b.disabled = false;
+    b.classList.remove("chosen");
+  });
+}
+
+function armFeedback(guid, lang) {
+  fbCtx = { guid, lang };
+  el("explain-feedback").classList.remove("hidden");
+}
+
+async function sendFeedback(btn) {
+  if (!fbCtx) return;
+  const vote = parseInt(btn.dataset.vote, 10);
+  ["fb-up", "fb-down"].forEach((id) => (el(id).disabled = true));
+  btn.classList.add("chosen");
+  el("fb-thanks").classList.remove("hidden");
+  try {
+    await fetch(`/api/cards/${fbCtx.guid}/explain/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vote, lang: fbCtx.lang }),
+    });
+  } catch { /* pure telemetry: swallow, the UI already acknowledged */ }
+}
+["fb-up", "fb-down"].forEach((id) =>
+  el(id).addEventListener("click", () => sendFeedback(el(id)))
+);
 
 /* ---------- health: pill tracks the AI link, redirect only if backend drops ---------- */
 startHealthPoll(({ backend, ai }) => {

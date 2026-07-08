@@ -60,6 +60,15 @@ CREATE TABLE IF NOT EXISTS pdf_help_cache (
     model TEXT NOT NULL,
     generated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS explain_feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guid TEXT, lang TEXT, model TEXT,
+    vote INTEGER,        -- +1 / -1
+    grounded INTEGER,    -- 1 = PDF-grounded, 0 = card-only, NULL = cache absent
+    deck_name TEXT,
+    surface TEXT,        -- 'explain'
+    created_at TEXT
+);
 """
 
 
@@ -157,6 +166,37 @@ class SrsStore:
             ),
         )
         self.conn.commit()
+
+    def save_explain_feedback(
+        self,
+        guid: str,
+        lang: str,
+        model: str,
+        vote: int,
+        grounded: int | None,
+        deck_name: str,
+        surface: str = "explain",
+    ) -> dict:
+        """Append-only telemetry of 👍/👎 votes on an AI explanation. Never
+        UPDATE/DELETE — multiple votes per (guid, lang) are expected. Returns
+        the stored snapshot for the endpoint to echo back."""
+        created_at = _now_iso()
+        self.conn.execute(
+            """
+            INSERT INTO explain_feedback (guid, lang, model, vote, grounded,
+                                          deck_name, surface, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (guid, lang, model, vote, grounded, deck_name, surface, created_at),
+        )
+        self.conn.commit()
+        return {
+            "vote": vote,
+            "grounded": grounded,
+            "model": model,
+            "deck_name": deck_name,
+            "created_at": created_at,
+        }
 
     def due_guids(self, now: datetime) -> set[str]:
         rows = self.conn.execute(

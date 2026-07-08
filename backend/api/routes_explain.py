@@ -1,9 +1,15 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
 
 import apkg_reader
 from explain import explain_card
 
 router = APIRouter()
+
+
+class ExplainFeedback(BaseModel):
+    vote: int
+    lang: str = "fr"
 
 
 @router.post("/api/cards/{guid}/explain")
@@ -19,8 +25,6 @@ def post_explain(guid: str, request: Request, force: bool = False, lang: str = "
             card = c
             break
     if card is None:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=404, detail="Card not found")
 
     result = explain_card(
@@ -34,3 +38,42 @@ def post_explain(guid: str, request: Request, force: bool = False, lang: str = "
         lang=lang,
     )
     return result
+
+
+@router.post("/api/cards/{guid}/explain/feedback")
+def post_explain_feedback(guid: str, body: ExplainFeedback, request: Request):
+    """Pure telemetry: log a 👍/👎 vote on the displayed explanation. Never
+    calls the AI — a cached explanation is enough (works even pill-red)."""
+    cfg = request.app.state.cfg
+    store = request.app.state.store
+
+    if body.vote not in (-1, 1):
+        raise HTTPException(status_code=400, detail="vote must be -1 or +1")
+
+    apkg_dir = cfg["paths"]["apkg_dir"]
+    card = None
+    for c in apkg_reader.read_all_cards(apkg_dir):
+        if c.guid == guid:
+            card = c
+            break
+    if card is None:
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    cache_guid = f"{guid}\x1f{body.lang}"
+    cached = store.get_explanation(cache_guid)
+    if cached is not None:
+        model = cached["model"]
+        grounded = 1 if cached["source_files"] else 0
+    else:
+        model = cfg["infercom"]["explain_model"]
+        grounded = None
+
+    return store.save_explain_feedback(
+        guid=guid,
+        lang=body.lang,
+        model=model,
+        vote=body.vote,
+        grounded=grounded,
+        deck_name=card.deck_name,
+        surface="explain",
+    )

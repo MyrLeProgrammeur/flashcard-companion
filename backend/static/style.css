@@ -692,7 +692,23 @@ button:active,
   border-top: 1px solid var(--hairline);
   font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em;
   color: var(--muted-2); text-transform: uppercase;
+  display: flex; align-items: center; gap: 12px;
 }
+.foot-meta { flex: 1; min-width: 0; }
+
+/* explain feedback 👍/👎 (pure telemetry) */
+.fb { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.fb-q { color: var(--muted-2); }
+.fb-btn {
+  border: 1px solid var(--hairline); background: var(--surface-sunk);
+  border-radius: 8px; padding: 4px 8px; font-size: 15px; line-height: 1;
+  cursor: pointer; transition: transform .1s, border-color .1s, opacity .1s;
+}
+.fb-btn:active { transform: scale(.92); }
+.fb-btn.chosen { border-color: var(--accent, currentColor); background: var(--surface); }
+.fb-btn:disabled { cursor: default; }
+.fb-btn:disabled:not(.chosen) { opacity: .35; }
+.fb-thanks { color: var(--muted-2); }
 
 /* explain loading skeleton */
 .skeleton .sk-line {
