@@ -210,7 +210,9 @@ el("pdf-help-form").addEventListener("submit", async (e) => {
     el("help-sheet-foot").textContent = t("common.error");
   } finally {
     submitBtn.disabled = false;
-    questionEl.focus();
+    // Deliberately NOT refocusing the textarea here: refocus pops the soft
+    // keyboard the moment the answer lands, covering the reply the user wants
+    // to read. Focus happens on sheet-open instead.
   }
 });
 

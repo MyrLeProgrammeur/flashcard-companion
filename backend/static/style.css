@@ -630,20 +630,21 @@ button:active,
   40% { opacity: 1; transform: translateY(-4px); }
 }
 
-/* apparition of the answer — reveal top-to-bottom with a soft fading edge */
-@property --chat-reveal {
-  syntax: "<percentage>";
-  inherits: false;
-  initial-value: 0%;
-}
+/* apparition of the answer — reveal top-to-bottom with a soft fading edge.
+   Animates mask-position (not a custom @property) so the Android WebView
+   tweens it smoothly instead of snapping. */
 .chat-bubble-enter {
   animation: chat-bubble-reveal .85s ease-out both;
-  -webkit-mask-image: linear-gradient(to bottom, #000 var(--chat-reveal), transparent calc(var(--chat-reveal) + 14%));
-  mask-image: linear-gradient(to bottom, #000 var(--chat-reveal), transparent calc(var(--chat-reveal) + 14%));
+  -webkit-mask-image: linear-gradient(to bottom, #000 40%, rgba(0, 0, 0, 0) 60%);
+  mask-image: linear-gradient(to bottom, #000 40%, rgba(0, 0, 0, 0) 60%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 250%;
+  mask-size: 100% 250%;
 }
 @keyframes chat-bubble-reveal {
-  from { --chat-reveal: 0%; }
-  to { --chat-reveal: 100%; }
+  from { -webkit-mask-position: 0 100%; mask-position: 0 100%; }
+  to { -webkit-mask-position: 0 0; mask-position: 0 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .chat-bubble-enter, .typing-dots span { animation: none; }

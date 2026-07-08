@@ -26,7 +26,11 @@ SYSTEM_PROMPT = (
     "pose une question sans énoncer le théorème demandé, ou une notion seulement "
     "évoquée — réponds quand même à partir de tes propres connaissances plutôt que "
     "de refuser. Signale brièvement quand tu complètes au-delà de l'extrait, mais ne "
-    "refuse jamais d'aider sous prétexte que l'extrait ne contient pas la réponse."
+    "refuse jamais d'aider sous prétexte que l'extrait ne contient pas la réponse. "
+    "IMPÉRATIF — écris TOUTE formule, symbole, variable ou expression mathématique "
+    "en LaTeX, jamais en texte brut ni en Unicode : délimiteurs $...$ pour l'inline "
+    "(ex. $\\sigma^2$, $x_i$, $\\hat\\beta$) et $$...$$ pour une équation en display. "
+    "Cela vaut même pour un simple symbole isolé dans une phrase."
 )
 
 # Answer language directive; also folded into the cache key.
