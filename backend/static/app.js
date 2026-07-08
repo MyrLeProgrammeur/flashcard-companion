@@ -174,38 +174,41 @@ el("explain-btn").addEventListener("click", async () => {
   }
 });
 
-/* ---------- explain feedback (👍/👎, pure telemetry, intra-open lock) ---------- */
-let fbCtx = null; // {guid, lang} of the currently displayed explanation
+/* ---------- explain feedback (👍/👎, pure telemetry) ---------- */
+let fbCtx = null;   // {guid, lang} of the currently displayed explanation
+let fbTimer = null; // pending "thanks" -> neutral revert
 
 function resetFeedback() {
   fbCtx = null;
+  if (fbTimer) { clearTimeout(fbTimer); fbTimer = null; }
   el("explain-feedback").classList.add("hidden");
+  el("fb-ask").classList.remove("hidden");
   el("fb-thanks").classList.add("hidden");
-  ["fb-up", "fb-down"].forEach((id) => {
-    const b = el(id);
-    b.disabled = false;
-    b.classList.remove("chosen");
-  });
 }
 
 function armFeedback(guid, lang) {
   fbCtx = { guid, lang };
   el("explain-feedback").classList.remove("hidden");
+  el("fb-ask").classList.remove("hidden");
+  el("fb-thanks").classList.add("hidden");
 }
 
-async function sendFeedback(btn) {
-  if (!fbCtx) return;
+function sendFeedback(btn) {
+  if (!fbCtx || fbTimer) return; // ignore clicks while the toast is showing
   const vote = parseInt(btn.dataset.vote, 10);
-  ["fb-up", "fb-down"].forEach((id) => (el(id).disabled = true));
-  btn.classList.add("chosen");
+  // swap the thumbs for a transient "thanks", then revert to neutral
+  el("fb-ask").classList.add("hidden");
   el("fb-thanks").classList.remove("hidden");
-  try {
-    await fetch(`/api/cards/${fbCtx.guid}/explain/feedback`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vote, lang: fbCtx.lang }),
-    });
-  } catch { /* pure telemetry: swallow, the UI already acknowledged */ }
+  fbTimer = setTimeout(() => {
+    fbTimer = null;
+    el("fb-thanks").classList.add("hidden");
+    el("fb-ask").classList.remove("hidden");
+  }, 2000);
+  fetch(`/api/cards/${fbCtx.guid}/explain/feedback`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ vote, lang: fbCtx.lang }),
+  }).catch(() => { /* pure telemetry: swallow, the UI already acknowledged */ });
 }
 ["fb-up", "fb-down"].forEach((id) =>
   el(id).addEventListener("click", () => sendFeedback(el(id)))

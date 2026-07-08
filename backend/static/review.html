@@ -79,17 +79,19 @@
       <h2 data-i18n="review.deepExplTitle">Explication approfondie</h2>
       <button class="sheet-close" id="sheet-close" aria-label="Close" data-i18n-attr="aria-label:common.close"></button>
     </div>
-    <div class="src-chip pdf hidden" id="src-chip"></div>
     <div class="sheet-scroll">
+      <div class="src-chip pdf hidden" id="src-chip"></div>
       <div class="degr-band hidden" id="degr-band"></div>
       <div class="md" id="explain-md"></div>
     </div>
     <div class="sheet-foot" id="sheet-foot">
       <span class="foot-meta" id="foot-meta"></span>
       <div class="fb hidden" id="explain-feedback">
-        <span class="fb-q" data-i18n="review.fbQuestion">Utile&nbsp;?</span>
-        <button class="fb-btn" id="fb-up" data-vote="1" aria-label="👍" data-i18n-attr="aria-label:review.fbUp">👍</button>
-        <button class="fb-btn" id="fb-down" data-vote="-1" aria-label="👎" data-i18n-attr="aria-label:review.fbDown">👎</button>
+        <span class="fb-ask" id="fb-ask">
+          <span class="fb-q" data-i18n="review.fbQuestion">Utile&nbsp;?</span>
+          <button class="fb-btn" id="fb-up" data-vote="1" aria-label="👍" data-i18n-attr="aria-label:review.fbUp">👍</button>
+          <button class="fb-btn" id="fb-down" data-vote="-1" aria-label="👎" data-i18n-attr="aria-label:review.fbDown">👎</button>
+        </span>
         <span class="fb-thanks hidden" id="fb-thanks" data-i18n="review.fbThanks">Merci, c'est noté</span>
       </div>
     </div>
