@@ -992,7 +992,10 @@ button:active,
 .dialog.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
 .dialog h3 { font-family: var(--font-serif); font-weight: 500; font-size: 17px; margin: 0 0 12px; }
 .dialog p { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
-.dialog input {
+/* Scoped to the text field: a bare `.dialog input` also caught the picker's
+   checkboxes, stretched them to the full row and squeezed the subject name
+   out of the flex line. */
+.dialog input[type="text"] {
   width: 100%; box-sizing: border-box; padding: 11px 12px;
   border: 1px solid var(--hairline); border-radius: 12px;
   background: var(--bg); color: inherit; font: inherit;
