@@ -21,7 +21,10 @@
     </header>
 
     <nav class="crumbs hidden" id="crumbs"></nav>
-    <h1 class="screen-title" id="title" data-i18n="home.today">Aujourd'hui</h1>
+    <div class="title-row">
+      <h1 class="screen-title" id="title" data-i18n="home.today">Aujourd'hui</h1>
+      <div class="title-chips" id="title-chips"></div>
+    </div>
     <p class="screen-sub" id="subtitle" data-i18n="home.loading">Chargement…</p>
 
     <div class="deck-list" id="deck-list"></div>
@@ -52,17 +55,12 @@
     </div>
   </div>
 
-  <div class="sheet-overlay" id="menu-overlay"></div>
-  <div class="menu-sheet" id="menu-sheet">
-    <h3 id="menu-title"></h3>
-    <div id="menu-items"></div>
-  </div>
-
   <div class="sheet-overlay" id="dialog-overlay"></div>
   <div class="dialog" id="dialog">
     <h3 id="dialog-title"></h3>
     <p id="dialog-body" class="hidden"></p>
     <input type="text" id="dialog-input" autocomplete="off" />
+    <div class="dialog-picker hidden" id="dialog-picker"></div>
     <div class="dialog-actions">
       <button class="dialog-cancel" id="dialog-cancel"></button>
       <button class="dialog-ok" id="dialog-ok"></button>
@@ -152,12 +150,6 @@
       if (nodes.length === 0) {
         list.innerHTML = `<p class="empty-note">${t("home.empty")}</p>`;
       }
-      // A subject can be filed only where filing means something: at the root,
-      // or inside a folder (to pull it back out). Themes are never filed.
-      const parent = nodeAt(stack);
-      const inGroup = !!(parent && parent.is_group);
-      const filable = (n) => !n.is_direct && (stack.length === 0 || inGroup);
-
       for (const n of nodes) {
         const hasKids = n.children.length > 0;
         const row = document.createElement(hasKids ? "button" : "a");
@@ -183,25 +175,10 @@
             ? `<span class="deck-badge">${n.due_count}</span>`
             : `<span class="deck-badge zero">0</span>`) +
           (hasKids ? `<span class="deck-chevron">${icon("chevronRight", "icon")}</span>` : "");
-
-        if (!filable(n)) {
-          list.appendChild(row);
-          continue;
-        }
-        // The kebab is a sibling, not a child: a <button> inside an <a>/<button>
-        // is invalid and swallows the row's own tap target.
-        const wrap = document.createElement("div");
-        wrap.className = "deck-row-wrap";
-        const kebab = document.createElement("button");
-        kebab.type = "button";
-        kebab.className = "deck-kebab";
-        kebab.setAttribute("aria-label", t("home.options", { name: n.name }));
-        kebab.innerHTML = icon("more", "icon");
-        kebab.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openMenu(n, inGroup); };
-        wrap.appendChild(row);
-        wrap.appendChild(kebab);
-        list.appendChild(wrap);
+        list.appendChild(row);
       }
+
+      renderTitleChips();
 
       // sticky CTA — review whole current subtree
       const cta = document.getElementById("review-all");
@@ -225,59 +202,92 @@
       }
     }
 
-    /* ---------- folders: ⋮ menu, rename/new-folder dialog ---------- */
+    /* ---------- folders: title chips + name/subject-picker dialog ----------
+       A folder exists only through the subjects it holds (`deck_group` maps
+       subject -> folder), so "new folder" has to name it *and* fill it in one
+       go — an empty folder would be a row nothing renders. */
     const el = (id) => document.getElementById(id);
 
-    function closeMenu() {
-      el("menu-sheet").classList.remove("open");
-      el("menu-overlay").classList.remove("open");
-    }
-
-    function menuItem(label, onClick) {
+    function chip(label, onClick) {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "menu-item";
+      b.className = "title-chip";
       b.textContent = label;
-      b.onclick = () => { closeMenu(); onClick(); };
+      b.onclick = onClick;
       return b;
     }
 
-    function openMenu(node, inGroup) {
-      el("menu-title").textContent = node.name;
-      const items = el("menu-items");
-      items.innerHTML = "";
+    function renderTitleChips() {
+      const chips = el("title-chips");
+      chips.innerHTML = "";
+      const here = nodeAt(stack);
 
-      if (node.is_group) {
-        items.appendChild(menuItem(t("home.renameFolder"), () => askName(
-          t("home.renameFolderTitle"), node.name,
-          (name) => api("PATCH", `/api/deck-groups/${encodeURIComponent(node.name)}`, { name })
+      if (stack.length === 0) {
+        const loose = TREE.filter((n) => !n.is_group && !n.is_direct);
+        if (loose.length) chips.appendChild(chip(t("home.newFolder"), openNewFolder));
+        return;
+      }
+      if (here && here.is_group) {
+        chips.appendChild(chip(t("home.addSubjects"), () => openAddSubjects(here.name)));
+        chips.appendChild(chip(t("home.removeSubjects"), () => openDialog(
+          t("home.removeSubjectsTitle", { name: here.name }),
+          { picker: here.children.filter((c) => !c.is_direct).map((c) => c.name),
+            onOk: () => { const c = pickedSubjects(); if (c.length) fileSubjects(c, null); } }
         )));
-        items.appendChild(menuItem(t("home.dissolveFolder"), () => confirmDialog(
-          t("home.dissolveTitle", { name: node.name }), t("home.dissolveBody"),
-          () => api("DELETE", `/api/deck-groups/${encodeURIComponent(node.name)}`)
+        chips.appendChild(chip(t("home.renameFolder"), () => askName(
+          t("home.renameFolderTitle"), here.name,
+          (name) => api("PATCH", `/api/deck-groups/${encodeURIComponent(here.name)}`, { name })
         )));
-      } else {
-        const setGroup = (group) =>
-          api("PUT", `/api/deck-groups/subject/${encodeURIComponent(node.name)}`, { group });
-
-        if (inGroup) {
-          items.appendChild(menuItem(t("home.removeFromFolder"), () => setGroup(null)));
-        }
-        const folders = TREE.filter((x) => x.is_group && x.name !== (nodeAt(stack) || {}).name);
-        if (folders.length) {
-          if (inGroup) items.appendChild(Object.assign(document.createElement("div"), { className: "menu-sep" }));
-          for (const f of folders) {
-            items.appendChild(menuItem(t("home.moveTo", { name: f.name }), () => setGroup(f.name)));
-          }
-        }
-        items.appendChild(menuItem(t("home.newFolder"), () => askName(
-          t("home.newFolderTitle"), "", (name) => setGroup(name)
+        chips.appendChild(chip(t("home.dissolveFolder"), () => confirmDialog(
+          t("home.dissolveTitle", { name: here.name }), t("home.dissolveBody"),
+          () => api("DELETE", `/api/deck-groups/${encodeURIComponent(here.name)}`)
         )));
       }
-
-      el("menu-sheet").classList.add("open");
-      el("menu-overlay").classList.add("open");
     }
+
+    const setGroup = (subject, group) =>
+      fetch(`/api/deck-groups/subject/${encodeURIComponent(subject)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ group }),
+      });
+
+    async function fileSubjects(subjects, group) {
+      // Sequential, not Promise.all: SQLite on the phone serialises writes
+      // anyway, and a partial failure leaves a coherent half-filled folder.
+      for (const s of subjects) {
+        const res = await setGroup(s, group);
+        if (!res.ok) { el("subtitle").textContent = t("common.error"); return; }
+      }
+      await loadTree();
+    }
+
+    function openNewFolder() {
+      const loose = TREE.filter((n) => !n.is_group && !n.is_direct).map((n) => n.name);
+      openDialog(t("home.newFolderTitle"), {
+        withInput: true, value: "", picker: loose, pickerNote: t("home.pickSubjects"),
+        onOk: () => {
+          const name = el("dialog-input").value.trim();
+          const chosen = pickedSubjects();
+          if (name && chosen.length) fileSubjects(chosen, name);
+        },
+      });
+    }
+
+    function openAddSubjects(group) {
+      const loose = TREE.filter((n) => !n.is_group && !n.is_direct).map((n) => n.name);
+      if (!loose.length) return;
+      openDialog(t("home.addSubjectsTitle", { name: group }), {
+        picker: loose,
+        onOk: () => {
+          const chosen = pickedSubjects();
+          if (chosen.length) fileSubjects(chosen, group);
+        },
+      });
+    }
+
+    const pickedSubjects = () =>
+      [...el("dialog-picker").querySelectorAll("input:checked")].map((i) => i.value);
 
     let dialogConfirm = null;
 
@@ -287,15 +297,30 @@
       dialogConfirm = null;
     }
 
-    function openDialog(title, { body = null, withInput = false, value = "", onOk }) {
+    function openDialog(title, { body = null, withInput = false, value = "", picker = null, pickerNote = null, onOk }) {
       el("dialog-title").textContent = title;
-      el("dialog-body").textContent = body || "";
-      el("dialog-body").classList.toggle("hidden", !body);
+      el("dialog-body").textContent = body || pickerNote || "";
+      el("dialog-body").classList.toggle("hidden", !body && !pickerNote);
       const input = el("dialog-input");
       input.classList.toggle("hidden", !withInput);
       input.value = value;
+
+      const box = el("dialog-picker");
+      box.innerHTML = "";
+      box.classList.toggle("hidden", !picker);
+      for (const name of picker || []) {
+        const row = document.createElement("label");
+        row.className = "picker-row";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.value = name;
+        row.appendChild(cb);
+        row.appendChild(Object.assign(document.createElement("span"), { textContent: name }));
+        box.appendChild(row);
+      }
+
       el("dialog-cancel").textContent = t("home.cancel");
-      el("dialog-ok").textContent = withInput ? t("home.confirm") : t("home.confirm");
+      el("dialog-ok").textContent = t("home.confirm");
       dialogConfirm = onOk;
       el("dialog").classList.add("open");
       el("dialog-overlay").classList.add("open");
@@ -314,7 +339,6 @@
     el("dialog-ok").onclick = () => { const run = dialogConfirm; closeDialog(); if (run) run(); };
     el("dialog-cancel").onclick = closeDialog;
     el("dialog-overlay").onclick = closeDialog;
-    el("menu-overlay").onclick = closeMenu;
     el("dialog-input").addEventListener("keydown", (e) => {
       if (e.key === "Enter") el("dialog-ok").click();
     });

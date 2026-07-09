@@ -955,42 +955,30 @@ button:active,
 }
 .pdf-help-submit[disabled] { opacity: .5; pointer-events: none; }
 
-/* ---------- home: folder actions (⋮ menu) ---------- */
-.deck-row-wrap { position: relative; }
-.deck-row-wrap > .deck-row { padding-right: 52px; }
+/* ---------- home: folder chips beside the screen title ---------- */
+.title-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.title-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.title-chip {
+  padding: 6px 12px; border-radius: 999px;
+  border: 1px solid var(--hairline); background: var(--surface);
+  color: var(--muted); font: inherit; font-size: 13px;
+  cursor: pointer; white-space: nowrap;
+}
+.title-chip:active { transform: scale(.97); background: var(--surface-sunk); }
 
-.deck-kebab {
-  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-  display: flex; align-items: center; justify-content: center;
-  width: 38px; height: 38px; border-radius: 10px;
-  background: transparent; border: 0; color: var(--muted-2);
-  cursor: pointer;
+.dialog-picker {
+  margin-top: 14px; max-height: 46vh; overflow-y: auto;
+  border: 1px solid var(--hairline); border-radius: 12px;
 }
-.deck-kebab:active { background: var(--surface-sunk); }
-
-.menu-sheet {
-  position: fixed; left: 50%; bottom: 0; transform: translate(-50%, 12px);
-  width: min(440px, 100vw);
-  background: var(--surface);
-  border-radius: 18px 18px 0 0;
-  box-shadow: var(--sheet-shadow);
-  padding: 18px 14px calc(18px + env(safe-area-inset-bottom));
-  opacity: 0; pointer-events: none; z-index: 43;
-  transition: opacity .16s ease, transform .16s cubic-bezier(.22,.61,.36,1);
-}
-.menu-sheet.open { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
-.menu-sheet h3 {
-  font-family: var(--font-serif); font-weight: 500; font-size: 16px;
-  margin: 0 0 10px; padding: 0 8px; color: var(--muted);
-}
-.menu-item {
+.picker-row {
   display: flex; align-items: center; gap: 12px;
-  width: 100%; padding: 14px 10px; border: 0; border-radius: 12px;
-  background: transparent; color: inherit; text-align: left;
-  font: inherit; cursor: pointer;
+  padding: 12px 12px; cursor: pointer;
 }
-.menu-item:active { background: var(--surface-sunk); }
-.menu-sep { height: 1px; background: var(--hairline); margin: 8px 10px; }
+.picker-row + .picker-row { border-top: 1px solid var(--hairline); }
+.picker-row input { width: 18px; height: 18px; accent-color: var(--accent); flex: none; }
 
 .dialog {
   position: fixed; left: 50%; top: 50%; transform: translate(-50%, -46%) scale(.96);
