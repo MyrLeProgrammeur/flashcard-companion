@@ -69,6 +69,14 @@ CREATE TABLE IF NOT EXISTS explain_feedback (
     surface TEXT,        -- 'explain'
     created_at TEXT
 );
+CREATE TABLE IF NOT EXISTS explain_critique (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guid TEXT NOT NULL,
+    lang TEXT NOT NULL,
+    model TEXT NOT NULL,
+    critique TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -197,6 +205,22 @@ class SrsStore:
             "deck_name": deck_name,
             "created_at": created_at,
         }
+
+    def save_explain_critique(
+        self, guid: str, lang: str, model: str, critique: str
+    ) -> None:
+        """Append-only: what the user typed after a 👎, before regenerating.
+        Recorded even if the regeneration then fails — the critique is the
+        signal, the retry is not. Correlate with explain_feedback on
+        (guid, lang, created_at) to tell a model problem from a grounding one."""
+        self.conn.execute(
+            """
+            INSERT INTO explain_critique (guid, lang, model, critique, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (guid, lang, model, critique, _now_iso()),
+        )
+        self.conn.commit()
 
     def due_guids(self, now: datetime) -> set[str]:
         rows = self.conn.execute(

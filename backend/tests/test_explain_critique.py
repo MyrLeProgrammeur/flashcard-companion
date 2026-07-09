@@ -2,10 +2,15 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
+
+import pytest  # noqa: E402
 
 from apkg_reader import CardRecord  # noqa: E402
 from explain import explain_card  # noqa: E402
 from srs_store import SrsStore  # noqa: E402
+from test_apkg_reader import build_fixture_apkg  # noqa: E402
+from test_explain_feedback import _first_due_guid, _make_client  # noqa: E402
 
 
 class _FakeMessage:
@@ -88,3 +93,71 @@ def test_no_critique_still_serves_cache(tmp_path):
     assert result["cached"] is True
     assert result["explanation"] == "OLD cached explanation"
     assert client.last_messages is None  # AI never called
+
+
+# --- the 👎 critique is telemetry too: it must survive the regeneration ---
+
+
+def _critique_rows(main_module):
+    return main_module.app.state.store.conn.execute(
+        "SELECT guid, lang, model, critique, created_at FROM explain_critique"
+    ).fetchall()
+
+
+def _explain(client, guid, critique):
+    return client.post(
+        f"/api/cards/{guid}/explain", params={"lang": "fr"}, json={"critique": critique}
+    )
+
+
+def test_route_persists_the_critique(tmp_path, monkeypatch):
+    main_module, client = _make_client(tmp_path, monkeypatch)
+    build_fixture_apkg(Path(main_module.app.state.cfg["paths"]["apkg_dir"]) / "f.apkg")
+    guid = _first_due_guid(client)
+    main_module.app.state.infercom_client = _FakeClient(reply="NEW")
+
+    assert _explain(client, guid, "Trop vague sur la dérivation").status_code == 200
+
+    rows = _critique_rows(main_module)
+    assert len(rows) == 1
+    assert rows[0][:4] == (guid, "fr", "cfg-model", "Trop vague sur la dérivation")
+    assert rows[0][4]  # created_at
+
+
+def test_critique_is_append_only_and_blank_ones_are_ignored(tmp_path, monkeypatch):
+    main_module, client = _make_client(tmp_path, monkeypatch)
+    build_fixture_apkg(Path(main_module.app.state.cfg["paths"]["apkg_dir"]) / "f.apkg")
+    guid = _first_due_guid(client)
+    main_module.app.state.infercom_client = _FakeClient(reply="NEW")
+
+    _explain(client, guid, "premier reproche")
+    _explain(client, guid, "second reproche")
+    _explain(client, guid, None)     # plain explain: nothing to record
+    _explain(client, guid, "   ")    # whitespace only: nothing to record
+
+    critiques = [r[3] for r in _critique_rows(main_module)]
+    assert critiques == ["premier reproche", "second reproche"]
+
+
+def test_critique_survives_a_failing_regeneration(tmp_path, monkeypatch):
+    """The critique is the signal; the retry is not. Record it even if the AI dies."""
+    main_module, client = _make_client(tmp_path, monkeypatch)
+    build_fixture_apkg(Path(main_module.app.state.cfg["paths"]["apkg_dir"]) / "f.apkg")
+    guid = _first_due_guid(client)
+
+    class _DeadClient:
+        class _Chat:
+            class _Completions:
+                def create(self, model, messages):
+                    raise RuntimeError("infercom unreachable")
+
+            completions = _Completions()
+
+        chat = _Chat()
+
+    main_module.app.state.infercom_client = _DeadClient()
+
+    with pytest.raises(RuntimeError):
+        _explain(client, guid, "réponse hors sujet")
+
+    assert [r[3] for r in _critique_rows(main_module)] == ["réponse hors sujet"]

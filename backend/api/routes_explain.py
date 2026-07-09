@@ -37,6 +37,15 @@ def post_explain(
     if card is None:
         raise HTTPException(status_code=404, detail="Card not found")
 
+    critique = body.critique if body else None
+    if critique and critique.strip():
+        store.save_explain_critique(
+            guid=guid,
+            lang=lang,
+            model=cfg["infercom"]["explain_model"],
+            critique=critique.strip(),
+        )
+
     result = explain_card(
         client=client,
         model=cfg["infercom"]["explain_model"],
@@ -46,7 +55,7 @@ def post_explain(
         max_pdf_context_chars=cfg["explain"]["max_pdf_context_chars"],
         force=force,
         lang=lang,
-        critique=body.critique if body else None,
+        critique=critique,
     )
     return result
 
