@@ -35,6 +35,7 @@ function currentTheme() {
 }
 function applyTheme(t) {
   document.documentElement.setAttribute("data-theme", t);
+  document.documentElement.style.colorScheme = t;
   localStorage.setItem(THEME_KEY, t);
   document.querySelectorAll("[data-theme-icon]").forEach((el) => {
     el.innerHTML = icon(t === "dark" ? "sun" : "moon");
@@ -43,7 +44,9 @@ function applyTheme(t) {
 function toggleTheme() {
   applyTheme(currentTheme() === "dark" ? "light" : "dark");
 }
-// apply immediately to avoid a flash
+// Idempotent: each page already set data-theme pre-paint via an inline head
+// script (this file is deferred, so it cannot be what avoids the flash). This
+// call only refreshes the sun/moon icons, which need the DOM.
 applyTheme(currentTheme());
 
 /* ---------- backend health ---------- */

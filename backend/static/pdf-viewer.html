@@ -5,6 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
   <title>Cours — Flashcard Companion</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <script>
+    /* Pre-paint theme. common.js is deferred, so it only runs after parsing —
+       the page had already painted light and then flipped to dark. That flip
+       was the flash. `color-scheme` makes the UA paint its own canvas dark
+       too, which covers the gap between navigations. */
+    (function () {
+      try {
+        var t = localStorage.getItem("fc-theme") || "light";
+        document.documentElement.setAttribute("data-theme", t);
+        document.documentElement.style.colorScheme = t;
+      } catch (e) {}
+    })();
+  </script>
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/vendor/katex/katex.min.css">
   <script src="/vendor/katex/katex.min.js" defer></script>

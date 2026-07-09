@@ -14,7 +14,8 @@ the source PDF. See `README.md` for the quick start.
 - The backend runs **on the phone via Termux**, not on the PC.
 - The Infercom key (`INFERCOM_API_KEY`) lives only in `backend/.env` **on the
   phone**, outside any Syncthing folder — never committed, never on the PC.
-- The SRS state (`backend/srs_store.db`) is specific to this app, never written into
+- The SRS state (`<data_dir>/companion_state.db`, see `paths.data_dir` in
+  `backend/config.yaml`) is specific to this app, never written into
   the synced `.apkg` files (avoids Syncthing conflicts).
 - PDF↔card matching = MVP heuristic (see `source_matcher.py`) — not guaranteed,
   explicit fallback to explanation from the card alone.

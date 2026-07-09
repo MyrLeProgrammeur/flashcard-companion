@@ -72,7 +72,19 @@ def health():
     except Exception:
         ai = "unreachable"
 
-    return {"status": "ok" if ai == "ok" else "degraded", "ai": ai}
+    # `apkg_dir` lives in Android shared storage, which a uvicorn started
+    # outside Termux's own context cannot read: every deck route then 500s
+    # while this endpoint still answered "ok". Probe one directory entry —
+    # lazily, so a big folder costs nothing.
+    decks = "unreadable"
+    try:
+        next(iter(Path(app.state.cfg["paths"]["apkg_dir"]).iterdir()), None)
+        decks = "ok"
+    except Exception:
+        decks = "unreadable"
+
+    healthy = ai == "ok" and decks == "ok"
+    return {"status": "ok" if healthy else "degraded", "ai": ai, "decks": decks}
 
 
 app.mount("/", StaticFiles(directory=Path(__file__).parent / "static", html=True), name="static")
