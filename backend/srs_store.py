@@ -23,6 +23,15 @@ CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+-- Display-only grouping of top-level subjects into folders on the home
+-- screen (and, by normalised name, on the Courses screen). Nothing here
+-- rewrites a deck name, so GUIDs and SRS state are untouched: emptying this
+-- table restores the ungrouped view exactly. `subject` is the primary key,
+-- which is what enforces "a subject lives in at most one folder".
+CREATE TABLE IF NOT EXISTS deck_group (
+    subject TEXT PRIMARY KEY,
+    group_name TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS explain_cache (
     guid TEXT PRIMARY KEY,
     explanation TEXT NOT NULL,
@@ -197,6 +206,45 @@ class SrsStore:
             "deck_name": deck_name,
             "created_at": created_at,
         }
+
+    def get_deck_groups(self) -> dict[str, str]:
+        """subject -> folder name, for every grouped subject."""
+        return {
+            subject: group_name
+            for subject, group_name in self.conn.execute(
+                "SELECT subject, group_name FROM deck_group"
+            )
+        }
+
+    def set_deck_group(self, subject: str, group_name: str | None) -> None:
+        """Move `subject` into a folder, or back to the root when None."""
+        if group_name is None:
+            self.conn.execute("DELETE FROM deck_group WHERE subject = ?", (subject,))
+        else:
+            self.conn.execute(
+                """
+                INSERT INTO deck_group (subject, group_name) VALUES (?, ?)
+                ON CONFLICT(subject) DO UPDATE SET group_name = excluded.group_name
+                """,
+                (subject, group_name),
+            )
+        self.conn.commit()
+
+    def delete_deck_group(self, group_name: str) -> int:
+        """Dissolve a folder. Its subjects return to the root; no card moves."""
+        cur = self.conn.execute(
+            "DELETE FROM deck_group WHERE group_name = ?", (group_name,)
+        )
+        self.conn.commit()
+        return cur.rowcount
+
+    def rename_deck_group(self, group_name: str, new_name: str) -> int:
+        cur = self.conn.execute(
+            "UPDATE deck_group SET group_name = ? WHERE group_name = ?",
+            (new_name, group_name),
+        )
+        self.conn.commit()
+        return cur.rowcount
 
     def save_explain_critique(
         self, guid: str, lang: str, model: str, critique: str

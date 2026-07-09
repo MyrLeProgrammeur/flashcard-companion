@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
 
 import source_matcher
+from grouping import apply_groups, group_path
 
 router = APIRouter()
 
@@ -75,7 +76,19 @@ def courses_tree(request: Request):
                 )
         return out
 
-    return walk(pdf_dir)
+    def make_group(name: str, children: list) -> dict:
+        # `rel_path` is virtual here; `/api/courses/file` rejects it, which is
+        # correct — a folder is not a document.
+        return {
+            "name": name,
+            "is_file": False,
+            "is_group": True,
+            "rel_path": group_path(name),
+            "children": sorted(children, key=lambda c: c["name"].casefold()),
+        }
+
+    store = request.app.state.store
+    return apply_groups(walk(pdf_dir), store.get_deck_groups(), make_group)
 
 
 @router.get("/api/courses/file")

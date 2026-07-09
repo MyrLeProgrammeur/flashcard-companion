@@ -2,6 +2,13 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request
 
+from grouping import (
+    apply_groups,
+    group_name_from_path,
+    group_path,
+    normalise,
+    subjects_in_group,
+)
 from srs import (
     QUALITY_AGAIN,
     QUALITY_EASY,
@@ -156,7 +163,17 @@ def deck_tree(request: Request):
                     )
         return out
 
-    return to_list(tree, [])
+    def make_group(name: str, children: list) -> dict:
+        return {
+            "name": name,
+            "path": group_path(name),
+            "is_group": True,
+            "card_count": sum(c["card_count"] for c in children),
+            "due_count": sum(c["due_count"] for c in children),
+            "children": sorted(children, key=lambda c: c["name"].casefold()),
+        }
+
+    return apply_groups(to_list(tree, []), store.get_deck_groups(), make_group)
 
 
 @router.get("/api/subjects")
@@ -187,8 +204,19 @@ def _due_cards_in_scope(store, cards, now: datetime, path: str = "") -> list:
     sorted. Both `/api/due` and `/api/due/count` go through this single loop
     so the two can never diverge on what "due" means."""
 
-    def in_scope(deck_name: str) -> bool:
-        return not path or deck_name == path or deck_name.startswith(path + "::")
+    # A folder is a display node, not a deck prefix: resolve it back to the
+    # subjects it holds, otherwise `path` would match no deck_name at all.
+    group_name = group_name_from_path(path)
+    if group_name is not None:
+        members = subjects_in_group(store.get_deck_groups(), group_name)
+        normalised_members = {normalise(m) for m in members}
+
+        def in_scope(deck_name: str) -> bool:
+            return normalise(deck_name.split("::")[0]) in normalised_members
+    else:
+
+        def in_scope(deck_name: str) -> bool:
+            return not path or deck_name == path or deck_name.startswith(path + "::")
 
     due = []
     for card in cards:

@@ -52,6 +52,23 @@
     </div>
   </div>
 
+  <div class="sheet-overlay" id="menu-overlay"></div>
+  <div class="menu-sheet" id="menu-sheet">
+    <h3 id="menu-title"></h3>
+    <div id="menu-items"></div>
+  </div>
+
+  <div class="sheet-overlay" id="dialog-overlay"></div>
+  <div class="dialog" id="dialog">
+    <h3 id="dialog-title"></h3>
+    <p id="dialog-body" class="hidden"></p>
+    <input type="text" id="dialog-input" autocomplete="off" />
+    <div class="dialog-actions">
+      <button class="dialog-cancel" id="dialog-cancel"></button>
+      <button class="dialog-ok" id="dialog-ok"></button>
+    </div>
+  </div>
+
   <script>
     let TREE = [];
     let stack = []; // current path, array of segment names
@@ -135,6 +152,12 @@
       if (nodes.length === 0) {
         list.innerHTML = `<p class="empty-note">${t("home.empty")}</p>`;
       }
+      // A subject can be filed only where filing means something: at the root,
+      // or inside a folder (to pull it back out). Themes are never filed.
+      const parent = nodeAt(stack);
+      const inGroup = !!(parent && parent.is_group);
+      const filable = (n) => !n.is_direct && (stack.length === 0 || inGroup);
+
       for (const n of nodes) {
         const hasKids = n.children.length > 0;
         const row = document.createElement(hasKids ? "button" : "a");
@@ -151,15 +174,33 @@
           row.href = `/review.html?path=${encodeURIComponent(n.path)}`;
         }
         const label = n.is_direct ? t("home.directCards") : n.name;
+        const glyph = n.is_group ? icon("folder", "icon") : glyphFor(n.name);
         row.innerHTML =
-          `<span class="deck-glyph">${n.is_direct ? "•" : glyphFor(n.name)}</span>` +
+          `<span class="deck-glyph">${n.is_direct ? "•" : glyph}</span>` +
           `<span class="deck-main"><span class="deck-name">${label}</span>` +
           `<span class="deck-meta">${t("home.cardCount", {n: n.card_count})}${n.due_count === 0 ? t("home.upToDate") : ""}</span></span>` +
           (n.due_count > 0
             ? `<span class="deck-badge">${n.due_count}</span>`
             : `<span class="deck-badge zero">0</span>`) +
           (hasKids ? `<span class="deck-chevron">${icon("chevronRight", "icon")}</span>` : "");
-        list.appendChild(row);
+
+        if (!filable(n)) {
+          list.appendChild(row);
+          continue;
+        }
+        // The kebab is a sibling, not a child: a <button> inside an <a>/<button>
+        // is invalid and swallows the row's own tap target.
+        const wrap = document.createElement("div");
+        wrap.className = "deck-row-wrap";
+        const kebab = document.createElement("button");
+        kebab.type = "button";
+        kebab.className = "deck-kebab";
+        kebab.setAttribute("aria-label", t("home.options", { name: n.name }));
+        kebab.innerHTML = icon("more", "icon");
+        kebab.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openMenu(n, inGroup); };
+        wrap.appendChild(row);
+        wrap.appendChild(kebab);
+        list.appendChild(wrap);
       }
 
       // sticky CTA — review whole current subtree
@@ -167,7 +208,10 @@
       const label = document.getElementById("cta-label");
       label.textContent = stack.length ? t("home.reviewScoped", {name: stack[stack.length - 1]}) : t("home.reviewAll");
       document.getElementById("all-count").textContent = totalDue;
-      cta.href = `/review.html?path=${encodeURIComponent(stack.join("::"))}`;
+      // Use the node's own path, never the crumb join: a folder's path is
+      // `@group:Name`, which is not a deck prefix and would match nothing.
+      const scopePath = stack.length ? (nodeAt(stack)?.path ?? "") : "";
+      cta.href = `/review.html?path=${encodeURIComponent(scopePath)}`;
       cta.classList.toggle("cta-off", totalDue === 0);
 
       // Animate the level swap so drilling in/out (which re-renders in place, no
@@ -179,6 +223,115 @@
         list.animate(frames, anim);
         document.getElementById("title").animate(frames, anim);
       }
+    }
+
+    /* ---------- folders: ⋮ menu, rename/new-folder dialog ---------- */
+    const el = (id) => document.getElementById(id);
+
+    function closeMenu() {
+      el("menu-sheet").classList.remove("open");
+      el("menu-overlay").classList.remove("open");
+    }
+
+    function menuItem(label, onClick) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "menu-item";
+      b.textContent = label;
+      b.onclick = () => { closeMenu(); onClick(); };
+      return b;
+    }
+
+    function openMenu(node, inGroup) {
+      el("menu-title").textContent = node.name;
+      const items = el("menu-items");
+      items.innerHTML = "";
+
+      if (node.is_group) {
+        items.appendChild(menuItem(t("home.renameFolder"), () => askName(
+          t("home.renameFolderTitle"), node.name,
+          (name) => api("PATCH", `/api/deck-groups/${encodeURIComponent(node.name)}`, { name })
+        )));
+        items.appendChild(menuItem(t("home.dissolveFolder"), () => confirmDialog(
+          t("home.dissolveTitle", { name: node.name }), t("home.dissolveBody"),
+          () => api("DELETE", `/api/deck-groups/${encodeURIComponent(node.name)}`)
+        )));
+      } else {
+        const setGroup = (group) =>
+          api("PUT", `/api/deck-groups/subject/${encodeURIComponent(node.name)}`, { group });
+
+        if (inGroup) {
+          items.appendChild(menuItem(t("home.removeFromFolder"), () => setGroup(null)));
+        }
+        const folders = TREE.filter((x) => x.is_group && x.name !== (nodeAt(stack) || {}).name);
+        if (folders.length) {
+          if (inGroup) items.appendChild(Object.assign(document.createElement("div"), { className: "menu-sep" }));
+          for (const f of folders) {
+            items.appendChild(menuItem(t("home.moveTo", { name: f.name }), () => setGroup(f.name)));
+          }
+        }
+        items.appendChild(menuItem(t("home.newFolder"), () => askName(
+          t("home.newFolderTitle"), "", (name) => setGroup(name)
+        )));
+      }
+
+      el("menu-sheet").classList.add("open");
+      el("menu-overlay").classList.add("open");
+    }
+
+    let dialogConfirm = null;
+
+    function closeDialog() {
+      el("dialog").classList.remove("open");
+      el("dialog-overlay").classList.remove("open");
+      dialogConfirm = null;
+    }
+
+    function openDialog(title, { body = null, withInput = false, value = "", onOk }) {
+      el("dialog-title").textContent = title;
+      el("dialog-body").textContent = body || "";
+      el("dialog-body").classList.toggle("hidden", !body);
+      const input = el("dialog-input");
+      input.classList.toggle("hidden", !withInput);
+      input.value = value;
+      el("dialog-cancel").textContent = t("home.cancel");
+      el("dialog-ok").textContent = withInput ? t("home.confirm") : t("home.confirm");
+      dialogConfirm = onOk;
+      el("dialog").classList.add("open");
+      el("dialog-overlay").classList.add("open");
+      if (withInput) setTimeout(() => input.focus(), 60);
+    }
+
+    const askName = (title, value, run) =>
+      openDialog(title, { withInput: true, value, onOk: () => {
+        const name = el("dialog-input").value.trim();
+        if (name) run(name);
+      }});
+
+    const confirmDialog = (title, body, run) =>
+      openDialog(title, { body, withInput: false, onOk: run });
+
+    el("dialog-ok").onclick = () => { const run = dialogConfirm; closeDialog(); if (run) run(); };
+    el("dialog-cancel").onclick = closeDialog;
+    el("dialog-overlay").onclick = closeDialog;
+    el("menu-overlay").onclick = closeMenu;
+    el("dialog-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") el("dialog-ok").click();
+    });
+
+    async function api(method, url, body) {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      if (!res.ok) {
+        document.getElementById("subtitle").textContent = t("common.error");
+        return;
+      }
+      // Filing can dissolve the folder we are standing in (last subject moved
+      // out), so always land back on the root rather than in a dead level.
+      await loadTree();
     }
 
     async function loadTree() {
