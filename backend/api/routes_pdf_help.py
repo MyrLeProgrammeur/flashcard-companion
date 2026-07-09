@@ -5,15 +5,17 @@ Infercom DeepSeek-V3.2 — same infra/shape as explain.py's card-explanation
 feature, but scoped to one resolved PDF file instead of a card's matched
 sources. Every turn re-sends the full conversation; the PDF context stays
 in the system message so each follow-up remains grounded.
+
+Unlike explain.py, answers are not cached: a card is re-reviewed many times
+and its explanation is worth keeping, whereas a chat turn is only reachable
+by replaying its whole conversation verbatim.
 """
-import hashlib
-import json
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from pdf_context import build_context
+from pdf_context import build_context, build_window_context
 
 router = APIRouter()
 
@@ -50,6 +52,7 @@ class PdfHelpBody(BaseModel):
     question: str | None = None
     messages: list[ChatMessage] | None = None
     lang: str = "fr"
+    page: int | None = None  # 1-indexed page on screen; grounds the context there
 
 
 def _resolve_pdf(rel_path: str, pdf_dir: Path) -> Path:
@@ -82,29 +85,27 @@ def post_pdf_help(body: PdfHelpBody, request: Request):
         raise HTTPException(status_code=400, detail="messages must not be empty")
 
     cfg = request.app.state.cfg
-    store = request.app.state.store
     pdf_dir = Path(cfg["paths"]["pdf_dir"])
 
     resolved = _resolve_pdf(body.rel_path, pdf_dir)
 
     lang = body.lang if body.lang in LANG_DIRECTIVE else "fr"
-    messages_json = json.dumps(
-        [{"role": m.role, "content": m.content} for m in messages],
-        ensure_ascii=False,
-    )
-    cache_key = hashlib.sha1(
-        f"{body.rel_path}\x1f{lang}\x1f{messages_json}".encode()
-    ).hexdigest()
-
-    cached = store.get_pdf_help(cache_key)
-    if cached is not None:
-        return {**cached, "cached": True}
-
     max_pdf_context_chars = cfg["explain"]["max_pdf_context_chars"]
-    pdf_context = build_context([str(resolved)], max_pdf_context_chars)
+    if body.page and body.page > 0:
+        pdf_context = build_window_context(
+            str(resolved), max_pdf_context_chars, body.page
+        )
+    else:
+        pdf_context = build_context([str(resolved)], max_pdf_context_chars)
 
     system_prompt = f"{SYSTEM_PROMPT} {LANG_DIRECTIVE[lang]}"
     if pdf_context:
+        if body.page and body.page > 0:
+            system_prompt += (
+                f"\n\nL'étudiant lit la page {body.page} de ce cours. Les extraits "
+                "ci-dessous sont centrés sur cette page ; sa question porte "
+                "probablement sur ce qui s'y trouve."
+            )
         system_prompt += f"\n\nExtraits du cours source:\n{pdf_context}"
     else:
         system_prompt += "\n\n(Aucun texte n'a pu être extrait de ce PDF — réponds à partir de tes connaissances et dis-le explicitement.)"
@@ -119,5 +120,4 @@ def post_pdf_help(body: PdfHelpBody, request: Request):
     )
     answer = response.choices[0].message.content
 
-    store.save_pdf_help(cache_key, body.rel_path, messages[-1].content, answer, model)
-    return {"answer": answer, "model": model, "cached": False}
+    return {"answer": answer, "model": model}

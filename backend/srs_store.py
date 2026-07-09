@@ -52,14 +52,6 @@ CREATE TABLE IF NOT EXISTS subject_grades (
     expected_results_date TEXT NOT NULL,
     grade REAL
 );
-CREATE TABLE IF NOT EXISTS pdf_help_cache (
-    cache_key TEXT PRIMARY KEY,
-    rel_path TEXT NOT NULL,
-    question TEXT NOT NULL,
-    answer TEXT NOT NULL,
-    model TEXT NOT NULL,
-    generated_at TEXT NOT NULL
-);
 CREATE TABLE IF NOT EXISTS explain_feedback (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guid TEXT, lang TEXT, model TEXT,
@@ -349,31 +341,3 @@ class SrsStore:
         )
         self.conn.commit()
 
-    def get_pdf_help(self, cache_key: str) -> dict | None:
-        row = self.conn.execute(
-            "SELECT answer, model, generated_at "
-            "FROM pdf_help_cache WHERE cache_key = ?",
-            (cache_key,),
-        ).fetchone()
-        if row is None:
-            return None
-        answer, model, generated_at = row
-        return {
-            "answer": answer,
-            "model": model,
-            "generated_at": generated_at,
-        }
-
-    def save_pdf_help(
-        self, cache_key: str, rel_path: str, question: str, answer: str, model: str
-    ) -> None:
-        self.conn.execute(
-            """
-            INSERT INTO pdf_help_cache (cache_key, rel_path, question, answer, model, generated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(cache_key) DO UPDATE SET
-                answer=excluded.answer, model=excluded.model, generated_at=excluded.generated_at
-            """,
-            (cache_key, rel_path, question, answer, model, _now_iso()),
-        )
-        self.conn.commit()

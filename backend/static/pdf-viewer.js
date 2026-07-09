@@ -43,6 +43,58 @@ function hideStatus() {
 
 let pdfDoc = null;
 let pageCanvases = [];
+let currentPage = 1;      // 1-indexed page the reader is looking at
+let pageTicking = false;
+
+/* The help button grounds its AI context on the page you are actually reading,
+   so the reader has to know which one that is.
+
+   Measured on the device (38-page course, 360px-wide WebView): a fit-to-width
+   page is ~233px tall against an ~804px screen, so three pages are fully on
+   screen at once. Any "most visible" metric — intersectionRatio or visible
+   height — ties between them and silently returns the topmost. Hence the
+   tie-break on distance to the screen's centre, which is what a reader means
+   by "the page I'm on". Visible height still leads, for the zoomed-in case
+   where one page overflows the screen and no page centre is visible at all.
+
+   Rects are read against the visual viewport, so this holds whichever element
+   ends up scrolling (the document on the phone, #pdf-viewport on a desktop
+   browser) — both are listened to below. */
+function updateCurrentPage() {
+  if (!pageCanvases.length) return;
+  const screenBottom = window.innerHeight;
+  const screenMiddle = screenBottom / 2;
+
+  let best = 1;
+  let bestVisible = -1;
+  let bestDistance = Infinity;
+
+  for (let i = 0; i < pageCanvases.length; i++) {
+    const r = pageCanvases[i].getBoundingClientRect();
+    const visible = Math.min(r.bottom, screenBottom) - Math.max(r.top, 0);
+    if (visible <= 0) continue;
+    const distance = Math.abs((r.top + r.bottom) / 2 - screenMiddle);
+    const tied = Math.abs(visible - bestVisible) <= 0.5;
+    if ((!tied && visible > bestVisible) || (tied && distance < bestDistance)) {
+      bestVisible = visible;
+      bestDistance = distance;
+      best = i + 1;
+    }
+  }
+  currentPage = best;
+}
+
+function schedulePageUpdate() {
+  if (pageTicking) return;
+  pageTicking = true;
+  requestAnimationFrame(() => {
+    pageTicking = false;
+    updateCurrentPage();
+  });
+}
+
+window.addEventListener("scroll", schedulePageUpdate, { passive: true });
+viewport.addEventListener("scroll", schedulePageUpdate, { passive: true });
 
 async function renderPageInto(canvas, page) {
   const viewportUnscaled = page.getViewport({ scale: 1 });
@@ -72,6 +124,7 @@ async function renderAllPages() {
     const page = await pdfDoc.getPage(num);
     await renderPageInto(canvas, page);
   }
+  updateCurrentPage();
 }
 
 let resizeTimer = null;
@@ -83,6 +136,7 @@ window.addEventListener("resize", () => {
       const page = await pdfDoc.getPage(i + 1);
       await renderPageInto(pageCanvases[i], page);
     }
+    updateCurrentPage();
   }, 150);
 });
 
@@ -187,7 +241,7 @@ el("pdf-help-form").addEventListener("submit", async (e) => {
     const res = await fetch("/api/courses/help", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rel_path: relPath, messages: helpHistory, lang: getLang() }),
+      body: JSON.stringify({ rel_path: relPath, messages: helpHistory, lang: getLang(), page: currentPage }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -198,7 +252,7 @@ el("pdf-help-form").addEventListener("submit", async (e) => {
     appendAssistantBubble(data.answer || "");
     scrollBubbleToTop(userBubble);
     el("help-sheet-foot").textContent =
-      `${data.model || t("pdf.modelFallback")} · ${data.cached ? t("pdf.cached") : t("pdf.freshGen")} · ${ms} ms`;
+      `${data.model || t("pdf.modelFallback")} · ${t("pdf.freshGen")} · ${ms} ms`;
   } catch {
     thinkingBubble.remove();
     helpHistory.pop();
