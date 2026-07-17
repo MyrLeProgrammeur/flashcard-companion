@@ -5,11 +5,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-if [ ! -d .venv ]; then
-  python -m venv .venv
-fi
+# Creates .venv if absent, and rebuilds it if a Termux python bump left it
+# unusable — a missing venv and a version-broken one look different but need
+# the same fix, so both live in ensure-venv.sh. Exits non-zero if it can't,
+# and `set -e` then stops us before a doomed uvicorn start.
+./termux/ensure-venv.sh
 
-source .venv/bin/activate
-pip install -q -r requirements.txt
-
-exec uvicorn main:app --host 127.0.0.1 --port 8420
+exec .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8420
