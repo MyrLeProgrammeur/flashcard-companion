@@ -36,7 +36,12 @@ def list_apkg_files(apkg_dir: str | Path) -> list[Path]:
     apkg_dir = Path(apkg_dir)
     if not apkg_dir.exists():
         return []
-    return sorted(apkg_dir.glob("*.apkg"))
+    # Syncthing names a conflicted copy "<deck>.sync-conflict-<date>-<id>.apkg".
+    # Picked up blindly it would surface in the app as a ghost subject with an
+    # absurd name and duplicated cards, so those copies are skipped.
+    return sorted(
+        p for p in apkg_dir.glob("*.apkg") if ".sync-conflict-" not in p.name
+    )
 
 
 def _extract_readonly(apkg_path: Path) -> str:

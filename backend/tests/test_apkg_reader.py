@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from apkg_reader import read_cards  # noqa: E402
+from apkg_reader import list_apkg_files, read_cards  # noqa: E402
 
 MODEL_ID = 1699000000000
 
@@ -110,3 +110,12 @@ def test_read_cards_extracts_fields_and_deck_hierarchy(tmp_path):
 
     assert by_guid["guid-b"].front == "Q2"
     assert by_guid["guid-b"].note == ""
+
+
+def test_list_apkg_files_ignores_syncthing_conflict_copies(tmp_path):
+    real = tmp_path / "Functional_Analysis.apkg"
+    build_fixture_apkg(real)
+    conflict = tmp_path / "Functional_Analysis.sync-conflict-20260903-192400-ABCDEFG.apkg"
+    build_fixture_apkg(conflict)
+
+    assert list_apkg_files(tmp_path) == [real]
