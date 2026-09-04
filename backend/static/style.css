@@ -974,6 +974,14 @@ button:active,
 }
 .title-chip:active { transform: scale(.97); background: var(--surface-sunk); }
 
+/* ---------- home: archives ---------- */
+/* Reuses .deck-row / .section-title as-is — an archived subject is the same
+   object, just parked. Only the trailing action and the spacing are new. */
+.archive-section { padding-bottom: 8px; }
+.archive-section .section-title { margin-top: 20px; }
+.archive-section .screen-sub { margin-bottom: 12px; }
+.archive-action { flex: none; align-self: center; }
+
 .dialog-picker {
   margin-top: 14px; max-height: 46vh; overflow-y: auto;
   border: 1px solid var(--hairline); border-radius: 12px;

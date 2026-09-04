@@ -48,16 +48,26 @@ def _model_json():
     }
 
 
-def build_fixture_apkg(apkg_path: Path):
-    """Hand-build a minimal .apkg matching flashcard-pipeline's db_writer.py schema."""
+def build_fixture_apkg(
+    apkg_path: Path,
+    subject: str = "Statistical Inference",
+    theme: str = "Confidence Intervals",
+    guid_prefix: str = "guid",
+):
+    """Hand-build a minimal .apkg matching flashcard-pipeline's db_writer.py schema.
+
+    The keyword arguments exist so a test can lay down a *second* subject next
+    to the default one (deck ids are per-file, GUIDs are not — hence the
+    prefix). Called with no arguments it produces exactly the historical
+    fixture."""
     tmp_db = apkg_path.with_suffix(".anki2.tmp")
     conn = sqlite3.connect(tmp_db)
     conn.executescript(SCHEMA_SQL)
 
     decks = {
         "1": {"id": 1, "name": "Default"},
-        "2": {"id": 2, "name": "Statistical Inference"},
-        "3": {"id": 3, "name": "Statistical Inference::Confidence Intervals"},
+        "2": {"id": 2, "name": subject},
+        "3": {"id": 3, "name": f"{subject}::{theme}"},
     }
     conn.execute(
         "INSERT INTO col VALUES (1,0,0,0,11,0,-1,0,'{}',?,?,'{}','')",
@@ -65,8 +75,8 @@ def build_fixture_apkg(apkg_path: Path):
     )
 
     notes = [
-        (1, "guid-a", MODEL_ID, "Q1\x1fA1\x1fnote1", "Q1"),
-        (2, "guid-b", MODEL_ID, "Q2\x1fA2\x1f", "Q2"),
+        (1, f"{guid_prefix}-a", MODEL_ID, "Q1\x1fA1\x1fnote1", "Q1"),
+        (2, f"{guid_prefix}-b", MODEL_ID, "Q2\x1fA2\x1f", "Q2"),
     ]
     for nid, guid, mid, flds, sfld in notes:
         conn.execute(

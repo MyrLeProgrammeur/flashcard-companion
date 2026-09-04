@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request
 
+from archive import archived_deck_filter
 from grouping import (
     apply_groups,
     group_name_from_path,
@@ -52,9 +53,12 @@ def list_decks(request: Request):
 
     cards = apkg_reader.read_all_cards(apkg_dir)
     now = datetime.now(timezone.utc)
+    is_archived = archived_deck_filter(store)
 
     tree: dict[str, dict[str, dict]] = {}
     for card in cards:
+        if is_archived(card.deck_name):
+            continue
         subject_node = tree.setdefault(card.subject, {})
         theme_node = subject_node.setdefault(card.theme, {"card_count": 0, "due_count": 0})
         theme_node["card_count"] += 1
@@ -109,8 +113,11 @@ def deck_tree(request: Request):
     import apkg_reader
 
     now = datetime.now(timezone.utc)
+    is_archived = archived_deck_filter(store)
     tree: dict = {}
     for card in apkg_reader.read_all_cards(apkg_dir):
+        if is_archived(card.deck_name):
+            continue
         segs = [s for s in card.deck_name.split("::") if s] or ["(sans nom)"]
         state = store.get_state(card.guid)
         is_due = state.due_at is not None and state.due_at <= now
@@ -184,8 +191,11 @@ def list_subjects(request: Request):
     apkg_dir = request.app.state.cfg["paths"]["apkg_dir"]
     import apkg_reader
 
+    is_archived = archived_deck_filter(request.app.state.store)
     counts: dict[str, int] = {}
     for card in apkg_reader.read_all_cards(apkg_dir):
+        if is_archived(card.deck_name):
+            continue
         segs = [s for s in card.deck_name.split("::") if s]
         for i in range(1, len(segs) + 1):
             path = "::".join(segs[:i])
@@ -202,7 +212,13 @@ def _due_cards_in_scope(store, cards, now: datetime, path: str = "") -> list:
     at `now`, scoped to `path` (empty = everything, else the exact deck or
     any deck nested under it via `path::...`). Returns (due_at, card) pairs,
     sorted. Both `/api/due` and `/api/due/count` go through this single loop
-    so the two can never diverge on what "due" means."""
+    so the two can never diverge on what "due" means.
+
+    Archived subjects are dropped here, before any scoping — that is the whole
+    point of archiving: no review, and therefore no daily notification, ever
+    comes back for a subject the user is done with. Even asking for an archived
+    subject by its exact `path` yields nothing."""
+    is_archived = archived_deck_filter(store)
 
     # A folder is a display node, not a deck prefix: resolve it back to the
     # subjects it holds, otherwise `path` would match no deck_name at all.
@@ -220,7 +236,7 @@ def _due_cards_in_scope(store, cards, now: datetime, path: str = "") -> list:
 
     due = []
     for card in cards:
-        if not in_scope(card.deck_name):
+        if is_archived(card.deck_name) or not in_scope(card.deck_name):
             continue
         state = store.get_state(card.guid)
         if state.due_at is not None and state.due_at <= now:
