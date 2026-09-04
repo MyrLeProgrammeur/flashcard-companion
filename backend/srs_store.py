@@ -32,6 +32,17 @@ CREATE TABLE IF NOT EXISTS deck_group (
     subject TEXT PRIMARY KEY,
     group_name TEXT NOT NULL
 );
+-- Archived subjects: a subject the user is done with (a finished year, say).
+-- Purely a filter over what the app *offers* — the home tree and the due
+-- queues skip it, so no review ever comes back for it, while `review_log`
+-- and every /api/stats/* aggregate keep it: the history stays the history.
+-- Deliberately NOT the same thing as `deck_group`: archiving a folder writes
+-- one row per subject and leaves the folder mapping untouched, so
+-- unarchiving restores the folder exactly as it was.
+CREATE TABLE IF NOT EXISTS archived_subject (
+    subject TEXT PRIMARY KEY,
+    archived_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS explain_cache (
     guid TEXT PRIMARY KEY,
     explanation TEXT NOT NULL,
@@ -245,6 +256,30 @@ class SrsStore:
         )
         self.conn.commit()
         return cur.rowcount
+
+    def get_archived_subjects(self) -> list[str]:
+        """Every archived subject, by deck-tree name, sorted for a stable UI."""
+        return [
+            row[0]
+            for row in self.conn.execute(
+                "SELECT subject FROM archived_subject ORDER BY subject"
+            )
+        ]
+
+    def set_subject_archived(self, subject: str, archived: bool) -> None:
+        """Archive / unarchive one subject. Idempotent both ways; nothing but
+        this table is written, so unarchiving is an exact restore."""
+        if archived:
+            self.conn.execute(
+                "INSERT INTO archived_subject (subject, archived_at) VALUES (?, ?) "
+                "ON CONFLICT(subject) DO NOTHING",
+                (subject, _now_iso()),
+            )
+        else:
+            self.conn.execute(
+                "DELETE FROM archived_subject WHERE subject = ?", (subject,)
+            )
+        self.conn.commit()
 
     def save_explain_critique(
         self, guid: str, lang: str, model: str, critique: str

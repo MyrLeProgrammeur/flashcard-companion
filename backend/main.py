@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from openai import OpenAI
 
 from api import (
+    routes_archive,
     routes_deck_groups,
     routes_decks,
     routes_exams,
@@ -39,6 +40,7 @@ app.state.infercom_client = OpenAI(
 
 app.include_router(routes_decks.router)
 app.include_router(routes_deck_groups.router)
+app.include_router(routes_archive.router)
 app.include_router(routes_review.router)
 app.include_router(routes_explain.router)
 app.include_router(routes_settings.router)

@@ -42,6 +42,13 @@
 
     <div class="deck-list" id="deck-list"></div>
 
+    <!-- Archived subjects: root level only, hidden while empty. -->
+    <section class="archive-section hidden" id="archive-section">
+      <h2 class="section-title" data-i18n="home.archivesTitle">Archives</h2>
+      <p class="screen-sub" data-i18n="home.archivesSub">Hors de l'accueil et hors des révisions. L'historique est conservé.</p>
+      <div class="deck-list" id="archive-list"></div>
+    </section>
+
     <div class="sticky-cta">
       <a class="cta" id="review-all" href="#">
         <span id="cta-label">Review all</span> <span class="count" id="all-count">0</span>
@@ -82,6 +89,7 @@
 
   <script>
     let TREE = [];
+    let ARCHIVED = []; // subject names, from /api/archive
     let stack = []; // current path, array of segment names
 
     function glyphFor(name) {
@@ -192,6 +200,7 @@
       }
 
       renderTitleChips();
+      renderArchives();
 
       // sticky CTA — review whole current subtree
       const cta = document.getElementById("review-all");
@@ -238,9 +247,14 @@
       if (stack.length === 0) {
         const loose = TREE.filter((n) => !n.is_group && !n.is_direct);
         if (loose.length) chips.appendChild(chip(t("home.newFolder"), openNewFolder));
+        if (archivable().length) chips.appendChild(chip(t("home.archive"), openArchivePicker));
         return;
       }
       if (here && here.is_group) {
+        chips.appendChild(chip(t("home.archiveFolder"), () => confirmDialog(
+          t("home.archiveFolderTitle", { name: here.name }), t("home.archiveFolderBody"),
+          () => archiveEntries([here], true)
+        )));
         chips.appendChild(chip(t("home.addSubjects"), () => openAddSubjects(here.name)));
         chips.appendChild(chip(t("home.removeSubjects"), () => openDialog(
           t("home.removeSubjectsTitle", { name: here.name }),
@@ -255,6 +269,74 @@
           t("home.dissolveTitle", { name: here.name }), t("home.dissolveBody"),
           () => api("DELETE", `/api/deck-groups/${encodeURIComponent(here.name)}`)
         )));
+      }
+    }
+
+    /* ---------- archive ----------
+       Archiving is not a folder and not a deletion: it drops a subject from
+       this tree and from every due queue (so no review comes back for it),
+       while the stats keep it. A folder is archived through
+       /api/archive/group, which archives its subjects one by one and leaves
+       the `deck_group` mapping alone — unarchiving restores it as it was. */
+
+    // What the root level can archive: loose subjects and folders alike.
+    const archivable = () => TREE.filter((n) => !n.is_direct);
+
+    async function archiveEntries(entries, archived) {
+      // Sequential for the same reason filing is: SQLite serialises the writes
+      // anyway, and a partial failure leaves a coherent half-archived state.
+      for (const n of entries) {
+        const kind = n.is_group ? "group" : "subject";
+        const res = await fetch(`/api/archive/${kind}/${encodeURIComponent(n.name)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ archived }),
+        });
+        if (!res.ok) { el("subtitle").textContent = t("common.error"); return; }
+      }
+      await loadTree();
+    }
+
+    function openArchivePicker() {
+      const rows = archivable();
+      if (!rows.length) return;
+      openDialog(t("home.archiveTitle"), {
+        picker: rows.map((n) => n.name),
+        pickerNote: t("home.archiveNote"),
+        onOk: () => {
+          const chosen = pickedSubjects();
+          const picked = rows.filter((n) => chosen.includes(n.name));
+          if (picked.length) archiveEntries(picked, true);
+        },
+      });
+    }
+
+    function renderArchives() {
+      const section = el("archive-section");
+      const list = el("archive-list");
+      // Only at the root: inside a folder it would be noise, and the rows
+      // there are not the same objects.
+      const show = stack.length === 0 && ARCHIVED.length > 0;
+      section.classList.toggle("hidden", !show);
+      if (!show) return;
+
+      list.innerHTML = "";
+      for (const subject of ARCHIVED) {
+        const row = document.createElement("div");
+        row.className = "deck-row done";
+        row.innerHTML =
+          `<span class="deck-glyph">${glyphFor(subject)}</span>` +
+          `<span class="deck-main"><span class="deck-name"></span>` +
+          `<span class="deck-meta">${t("home.archivedMeta")}</span></span>`;
+        row.querySelector(".deck-name").textContent = subject;
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "title-chip archive-action";
+        btn.textContent = t("home.unarchive");
+        btn.onclick = () => archiveEntries([{ name: subject }], false);
+        row.appendChild(btn);
+        list.appendChild(row);
       }
     }
 
@@ -372,7 +454,12 @@
     }
 
     async function loadTree() {
-      TREE = await (await fetch("/api/tree", { cache: "no-store" })).json();
+      const [tree, archive] = await Promise.all([
+        fetch("/api/tree", { cache: "no-store" }).then((r) => r.json()),
+        fetch("/api/archive", { cache: "no-store" }).then((r) => r.json()),
+      ]);
+      TREE = tree;
+      ARCHIVED = archive.subjects || [];
       stack = [];
       history.replaceState({ stack: [] }, "", location.href);
       renderLevel();
