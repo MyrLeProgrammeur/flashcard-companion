@@ -366,13 +366,27 @@ button:active,
   font-size: 22px; font-weight: 500;
   flex: none;
 }
-.deck-main { flex: 1; min-width: 0; overflow: hidden; padding-right: 4px; }
+/* Column flex, not a plain block: .deck-name and .deck-meta are <span>s, and as
+   inline boxes they ran together on one line ("M2" immediately followed by
+   "74 cards") and ignored text-overflow, so a long subject was hard-clipped
+   mid-word by this element's overflow instead of getting an ellipsis. As flex
+   items they are blockified, which fixes both. align-items keeps them from
+   stretching to the full row width. */
+.deck-main {
+  flex: 1; min-width: 0; overflow: hidden; padding-right: 4px;
+  display: flex; flex-direction: column; align-items: flex-start;
+}
 .deck-name {
+  max-width: 100%;
   font-family: var(--font-serif);
   font-weight: 500; font-size: 17px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.deck-meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted-2); margin-top: 3px; }
+.deck-meta {
+  max-width: 100%;
+  font-family: var(--font-mono); font-size: 11px; color: var(--muted-2); margin-top: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 
 .deck-badge {
   flex: none;
