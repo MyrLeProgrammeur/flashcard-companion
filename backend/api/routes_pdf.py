@@ -21,9 +21,14 @@ def list_courses(request: Request):
     cards = apkg_reader.read_all_cards(apkg_dir)
     subjects = sorted({card.subject for card in cards})
 
+    # One listing for every subject: `pdf_dir` is on Android shared storage,
+    # where a walk costs seconds, and matching per subject used to re-walk it
+    # once per subject (~9 walks = minutes, which stalled the review screen).
+    pdfs = source_matcher.list_pdfs(pdf_dir)
+
     result: dict[str, list[dict]] = {}
     for subject in subjects:
-        matches = source_matcher.find_source_pdfs([subject], pdf_dir)
+        matches = source_matcher.find_source_pdfs([subject], pdf_dir, pdfs=pdfs)
         result[subject] = [
             {
                 "filename": Path(m).name,

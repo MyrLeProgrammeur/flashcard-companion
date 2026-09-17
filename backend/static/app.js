@@ -21,18 +21,30 @@ el("sheet-close").innerHTML = icon("close");
 /* ---------- load queue ---------- */
 async function loadQueue() {
   el("deck-name").textContent = path ? path.split("::").pop() : t("review.allDecks");
-  const [dueRes, coursesRes] = await Promise.all([
-    fetch(`/api/due?path=${encodeURIComponent(path)}&limit=50`, { cache: "no-store" }),
-    fetch("/api/courses", { cache: "no-store" }),
-  ]);
-  queue = await dueRes.json();
   try {
-    coursesData = await coursesRes.json();
+    const dueRes = await fetch(`/api/due?path=${encodeURIComponent(path)}&limit=50`, { cache: "no-store" });
+    queue = await dueRes.json();
   } catch {
-    coursesData = {};
+    queue = [];
   }
   el("total").textContent = queue.length;
   render();
+  loadCourses(); // deliberately not awaited — see below
+}
+
+/* The source-PDF lookup scans a Syncthing folder on shared storage and can take
+   seconds. It used to be awaited alongside /api/due in a Promise.all, so a slow
+   scan held up render() and the card showed up completely blank — no question,
+   no answer, on either face. It is ancillary data: fetch it after the card is
+   already on screen and only then reveal the "view source" link. */
+async function loadCourses() {
+  try {
+    const res = await fetch("/api/courses", { cache: "no-store" });
+    coursesData = await res.json();
+  } catch {
+    coursesData = {};
+  }
+  updateSourceLink();
 }
 
 /* ---------- render current card ---------- */
@@ -64,8 +76,14 @@ function render() {
   el("pos").textContent = idx + 1;
   el("bar").style.width = queue.length ? `${(idx / queue.length) * 100}%` : "0%";
 
+  updateSourceLink();
+  updateFoot();
+}
+
+function updateSourceLink() {
   const sourceLink = el("source-link");
-  const matches = coursesData[c.subject];
+  const c = queue[idx];
+  const matches = c && coursesData[c.subject];
   if (matches && matches.length) {
     sourceLink.href = `/pdf-viewer.html?path=${encodeURIComponent(matches[0].rel_path)}`;
     sourceLink.innerHTML = icon("doc") + " " + t("review.viewSource");
@@ -73,8 +91,6 @@ function render() {
   } else {
     sourceLink.classList.add("hidden");
   }
-
-  updateFoot();
 }
 
 function updateFoot() {
