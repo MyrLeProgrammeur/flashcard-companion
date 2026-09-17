@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the bg token in the dark theme, so a dark-mode launch never flashes light. -->
+    <color name="window_bg">#16140F</color>
+</resources>

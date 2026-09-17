@@ -1,31 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Required to reach the local backend on 127.0.0.1:8420 (health check +
-         WebView). Without it the app can open no socket at all, even loopback. -->
+    <!-- The only outbound traffic is the Infercom call behind the AI features.
+         Decks, scheduling, review history and PDF rendering are all local. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Best-effort auto-launch of the Termux backend via Termux:API's
-         RUN_COMMAND intent (plan §3.3 step 2). Silently no-ops if
-         Termux:API isn't installed/granted — manual start.sh always works. -->
-    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
+    <!-- The .apkg decks and course PDFs live in shared storage, mirrored there
+         by Syncthing. Arbitrary paths under /storage/emulated/0 are readable
+         only with all-files access; the app asks for it on first run and never
+         writes to those folders. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="false"
         android:label="Flashcard Companion"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:usesCleartextTraffic="true"
-        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+        android:supportsRtl="true"
+        android:theme="@style/Theme.FlashcardCompanion">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:configChanges="orientation|screenSize|keyboardHidden">
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|keyboardHidden|uiMode">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Daily "cards still due" reminder, replacing the Termux cron job. -->
+        <receiver
+            android:name=".notify.DueReminderReceiver"
+            android:exported="false" />
+
+        <!-- Alarms do not survive a reboot; this re-arms them. -->
+        <receiver
+            android:name=".notify.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Hands the exported review log to another app without exposing
+             anything else the app stores. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

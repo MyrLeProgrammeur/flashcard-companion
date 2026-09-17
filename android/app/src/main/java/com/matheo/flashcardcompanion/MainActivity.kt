@@ -1,154 +1,166 @@
 package com.matheo.flashcardcompanion
 
-import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
-import android.view.Gravity
-import android.view.View
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.ProgressBar
-import android.widget.TextView
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
+import android.provider.Settings
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.matheo.flashcardcompanion.ui.CoursesScreen
+import com.matheo.flashcardcompanion.ui.ExamsScreen
+import com.matheo.flashcardcompanion.ui.FlashcardTheme
+import com.matheo.flashcardcompanion.ui.HomeScreen
+import com.matheo.flashcardcompanion.ui.LocalFcColors
+import com.matheo.flashcardcompanion.ui.LocalT
+import com.matheo.flashcardcompanion.ui.MaxContentWidth
+import com.matheo.flashcardcompanion.ui.PagePadding
+import com.matheo.flashcardcompanion.ui.PdfViewerScreen
+import com.matheo.flashcardcompanion.ui.ReviewScreen
+import com.matheo.flashcardcompanion.ui.SettingsScreen
+import com.matheo.flashcardcompanion.ui.StatsScreen
+import com.matheo.flashcardcompanion.ui.StorageGateScreen
+import com.matheo.flashcardcompanion.ui.Translator
 
-private const val BACKEND_URL = "http://127.0.0.1:8420/"
-private const val HEALTH_URL = "http://127.0.0.1:8420/api/health"
-private const val HEALTH_TIMEOUT_MS = 1500
+class MainActivity : ComponentActivity() {
 
-// Fast, network-free launcher (venv + wakelock + uvicorn, with a no-double-start
-// guard). Same script Termux:Boot runs at boot.
-private const val START_SCRIPT =
-    "/data/data/com.termux/files/home/.termux/boot/start-flashcard-backend.sh"
-
-// After triggering the backend, poll health ~1s * N before giving up.
-private const val AUTOSTART_ATTEMPTS = 20
-
-class MainActivity : Activity() {
-
-    private lateinit var webView: WebView
-    private var webViewShown = false
+    private val vm: AppViewModel by lazy { ViewModelProvider(this)[AppViewModel::class.java] }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-
-        // Best-effort: make sure we hold Termux's RUN_COMMAND permission so the
-        // auto-start can reach Termux. Silently no-ops if not grantable.
-        try {
-            requestPermissions(arrayOf("com.termux.permission.RUN_COMMAND"), 0)
-        } catch (_: Exception) { /* not runtime-grantable — fallback covers it */ }
-
-        webView = WebView(this).apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            webViewClient = WebViewClient()
-        }
-
-        setContentView(loadingScreen("Connecting to backend…"))
-        bootFlow()
+        setContent { Root() }
     }
 
-    /** Health check; if down, trigger the Termux backend once, poll until it's
-     *  up, then load the UI. Falls back to a manual screen if it never comes up. */
-    private fun bootFlow() {
-        runOnUiThread { setContentView(loadingScreen("Connecting to backend…")) }
-        Thread {
-            if (isBackendHealthy()) { showWebView(); return@Thread }
+    override fun onResume() {
+        super.onResume()
+        // All-files access is granted in system Settings, outside the app, so
+        // returning to the foreground is the only reliable moment to notice it.
+        vm.recheckStorage()
+    }
+}
 
-            runOnUiThread { setContentView(loadingScreen("Starting backend…")) }
-            tryRunCommand()
+@Composable
+private fun Root(vm: AppViewModel = viewModel()) {
+    val themePref by vm.theme.collectAsStateWithLifecycle()
+    val lang by vm.lang.collectAsStateWithLifecycle()
+    val dark = when (themePref) {
+        "dark" -> true
+        "light" -> false
+        else -> isSystemInDarkTheme()
+    }
 
-            var attempts = AUTOSTART_ATTEMPTS
-            while (attempts-- > 0) {
-                try { Thread.sleep(1000) } catch (_: InterruptedException) {}
-                if (isBackendHealthy()) { showWebView(); return@Thread }
+    FlashcardTheme(dark = dark) {
+        CompositionLocalProvider(LocalT provides Translator(lang)) {
+            val colors = LocalFcColors.current
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(colors.bg)
+                    .statusBarsPadding()
+                    .navigationBarsPadding(),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                Box(Modifier.widthIn(max = MaxContentWidth).fillMaxSize()) { AppNav(vm) }
             }
-            runOnUiThread { setContentView(fallbackScreen()) }
-        }.start()
-    }
-
-    private fun showWebView() {
-        runOnUiThread {
-            setContentView(webView)
-            webView.loadUrl(BACKEND_URL)
-            webViewShown = true
         }
     }
+}
 
-    @Suppress("DEPRECATION")
-    override fun onBackPressed() {
-        if (webViewShown && webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            super.onBackPressed()
+@Composable
+private fun AppNav(vm: AppViewModel) {
+    val nav = rememberNavController()
+    val storageGranted by vm.storageGranted.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    if (!storageGranted) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = PagePadding)) {
+            StorageGateScreen(onGrant = { requestAllFilesAccess(context) })
         }
+        return
     }
 
-    private fun loadingScreen(msg: String): View {
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(48, 48, 48, 48)
+    NavHost(navController = nav, startDestination = "home") {
+        composable("home") {
+            HomeScreen(
+                vm = vm,
+                onReview = { path -> nav.navigate("review?path=${Uri.encode(path)}") },
+                onOpen = { route -> nav.navigate(route) },
+            )
         }
-        layout.addView(ProgressBar(this))
-        layout.addView(TextView(this).apply {
-            text = msg
-            textSize = 15f
-            gravity = Gravity.CENTER
-            setPadding(0, 40, 0, 0)
-        })
-        return layout
-    }
-
-    private fun fallbackScreen(): View {
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(48, 96, 48, 48)
+        composable(
+            "review?path={path}",
+            arguments = listOf(navArgument("path") { type = NavType.StringType; defaultValue = "" }),
+        ) { entry ->
+            ReviewScreen(
+                vm = vm,
+                path = entry.arguments?.getString("path").orEmpty(),
+                onBack = { nav.popBackStack() },
+                onOpenPdf = { rel -> nav.navigate("pdf?path=${Uri.encode(rel)}") },
+            )
         }
-        layout.addView(TextView(this).apply {
-            text = "The backend didn't start automatically.\n\n" +
-                "Open Termux and run:\n" +
-                "bash ~/flashcard-companion/backend/termux/start.sh\n\n" +
-                "Then tap Retry."
-            textSize = 16f
-        })
-        layout.addView(Button(this).apply {
-            text = "Retry"
-            setOnClickListener { bootFlow() }
-        })
-        return layout
-    }
-
-    /** Ask Termux to run the backend launcher. Needs allow-external-apps=true in
-     *  termux.properties and the RUN_COMMAND permission (both set up on-device). */
-    private fun tryRunCommand() {
-        try {
-            val intent = Intent().apply {
-                setClassName("com.termux", "com.termux.app.RunCommandService")
-                action = "com.termux.RUN_COMMAND"
-                putExtra("com.termux.RUN_COMMAND_PATH", START_SCRIPT)
-                putExtra("com.termux.RUN_COMMAND_BACKGROUND", true)
-            }
-            startService(intent)
-        } catch (_: Exception) {
-            // Termux absent / not granted — the fallback screen handles it.
+        composable("stats") { StatsScreen(vm) { nav.popBackStack() } }
+        composable("exams") { ExamsScreen(vm) { nav.popBackStack() } }
+        composable("settings") { SettingsScreen(vm) { nav.popBackStack() } }
+        composable("courses") {
+            CoursesScreen(
+                vm = vm,
+                onBack = { nav.popBackStack() },
+                onOpenPdf = { rel -> nav.navigate("pdf?path=${Uri.encode(rel)}") },
+            )
+        }
+        composable(
+            "pdf?path={path}",
+            arguments = listOf(navArgument("path") { type = NavType.StringType; defaultValue = "" }),
+        ) { entry ->
+            PdfViewerScreen(
+                vm = vm,
+                absPath = entry.arguments?.getString("path").orEmpty(),
+                onBack = { nav.popBackStack() },
+            )
         }
     }
+}
 
-    private fun isBackendHealthy(): Boolean {
-        return try {
-            val conn = URL(HEALTH_URL).openConnection() as HttpURLConnection
-            conn.connectTimeout = HEALTH_TIMEOUT_MS
-            conn.readTimeout = HEALTH_TIMEOUT_MS
-            conn.requestMethod = "GET"
-            val ok = conn.responseCode == 200
-            conn.disconnect()
-            ok
-        } catch (_: IOException) {
-            false
+private fun requestAllFilesAccess(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+    val direct = Intent(
+        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+        Uri.parse("package:${context.packageName}"),
+    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    // Some OEM builds do not honour the per-package deep link; fall back to the
+    // global list rather than leaving the button doing nothing.
+    runCatching { context.startActivity(direct) }.onFailure {
+        runCatching {
+            context.startActivity(
+                Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
         }
     }
 }

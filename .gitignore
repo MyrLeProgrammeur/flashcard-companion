@@ -9,3 +9,5 @@ __pycache__/
 android/.gradle/
 android/*/build/
 android/local.properties
+android/.kotlin/
+android/app/.kotlin/

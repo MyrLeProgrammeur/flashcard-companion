@@ -2,4 +2,6 @@
 <resources>
     <!-- Same accent green as the web UI's light theme (backend/static/style.css accent var). -->
     <color name="ic_launcher_background">#2F6F4E</color>
+    <!-- Matches the bg token in the light theme. -->
+    <color name="window_bg">#FAF8F3</color>
 </resources>
