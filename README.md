@@ -9,9 +9,9 @@ The app is **standalone**: no server, no Termux, nothing to start. It reads the
 own SRS state in a local SQLite database, and renders everything natively.
 
 - `android/` — the app (Kotlin + Jetpack Compose).
-- `backend/` — **legacy.** The FastAPI server + web UI the app used to wrap in a
-  WebView. No longer required by the app; kept because it still runs on a PC for
-  browsing the same decks. See [Legacy backend](#legacy-backend).
+- `backend/` — **decommissioned.** The FastAPI server + web UI the app used to
+  wrap in a WebView. Nothing depends on it any more and it no longer runs on the
+  phone. See [Decommissioned backend](#decommissioned-backend).
 
 ## How it works
 
@@ -118,21 +118,33 @@ backend/                  legacy FastAPI server + web UI
 docs/plans/               design history and open decisions
 ```
 
-## Legacy backend
+## Decommissioned backend
 
-`backend/` is no longer used by the Android app. It still runs if you want the
-web UI on a PC:
+`backend/` is dead code, kept only so the generated files below can be traced
+back to what produced them. On 2026-09-17 it was switched off on the phone:
 
-```bash
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env          # set INFERCOM_API_KEY
-uvicorn main:app --reload --port 8420
-```
+- the `uvicorn` server on `127.0.0.1:8420` was stopped,
+- `~/.termux/boot/start-flashcard-backend.sh` was removed, so it no longer
+  starts at boot or holds a wakelock,
+- `termux-job-scheduler` jobs **1001** (due-card notification) and **1002**
+  (exam-results notification) were cancelled — the app posts that reminder
+  itself now.
 
-Point `config.yaml`'s `paths.apkg_dir` / `paths.pdf_dir` at folders holding some
-`.apkg`/PDF files. Tests: `pytest backend/tests/`.
+Unrelated jobs on the same phone were deliberately left alone: **1003**
+(`flashcard-pipeline`) and **1101** (`eisenhower-matrix`), as was the
+`eisenhower-matrix` server on port 8421.
 
-Note that the backend and the app keep **separate** databases. Reviewing in both
-means two diverging schedules.
+Three committed Kotlin files were generated from this backend and are the reason
+it is still worth being able to read:
+
+| generated file | from |
+|---|---|
+| `ui/Strings.kt` | `backend/static/i18n.js` |
+| `ai/Prompts.kt` | `backend/explain.py`, `backend/api/routes_pdf_help.py` |
+| `SchedulerParityTest.kt` | the real output of `backend/srs.py` and `difflib` |
+
+They are committed, so the app builds and the tests run without the backend
+present. The generators that produced them lived in `tools/`.
+
+Deleting the directory is safe — `git log` keeps it, and
+`git checkout <commit> -- backend tools` brings it back.

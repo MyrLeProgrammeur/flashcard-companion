@@ -7,8 +7,9 @@ with an AI explanation button grounded in the source PDF. See `README.md`.
 ## Context to load before acting
 
 - The app is **standalone**. There is no backend to start, and nothing in
-  `android/` may depend on one. `backend/` is legacy: still runnable on a PC for
-  the web UI, but the app never talks to it.
+  `android/` may depend on one. `backend/` is decommissioned dead code: the
+  server, its boot script and its two notification jobs were removed from the
+  phone on 2026-09-17.
 - The stable GUID `sha1(subject\x1ftheme\x1fquestion)` (see the pipeline's
   `db_writer.py`) is the join key — never `notes.id`.
 
@@ -28,8 +29,11 @@ with an AI explanation button grounded in the source PDF. See `README.md`.
 - Porting scheduler logic: Python's `round()` is round-half-to-**even** and
   `difflib.ratio()` is Ratcliff/Obershelp, not Levenshtein. `SchedulerParityTest`
   is generated from the real Python output and guards both — regenerate it with
-  `tools/gen_srs_tests.py` rather than editing expectations by hand.
-- `ui/Strings.kt` is **generated** from `backend/static/i18n.js`. Native-only
+  `tools/gen_srs_tests.py` (needs `backend/` present) rather than editing
+  expectations by hand.
+- `ui/Strings.kt`, `ai/Prompts.kt` and `SchedulerParityTest.kt` were **generated**
+  from the backend (generators in `tools/`). They are committed, so the app
+  builds without it. Native-only
   strings go in `StringsExtra.kt`; wording that must diverge from the web app
   goes in its `overrideFr`/`overrideEn` maps, which win over the generated table.
 - PDF↔card matching = MVP heuristic (see `SourceMatcher.kt`) — not guaranteed,

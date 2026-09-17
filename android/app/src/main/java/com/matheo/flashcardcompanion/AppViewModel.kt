@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.matheo.flashcardcompanion.ai.ExplainService
 import com.matheo.flashcardcompanion.data.DeckNode
 import com.matheo.flashcardcompanion.data.Repository
+import com.matheo.flashcardcompanion.notify.DueReminder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,6 +48,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     init {
         refresh()
         pingAi()
+        armDailyReminder()
+    }
+
+    /**
+     * Arms the daily due-cards reminder from the stored hour on every launch.
+     *
+     * Scheduling only on "save" in Settings meant the reminder never existed
+     * for anyone who never opened Settings — and the Termux job it replaces is
+     * gone, so nothing else would fire. Re-arming is idempotent.
+     */
+    fun armDailyReminder() {
+        val hour = runCatching { repo.store.getSettingsMap()["notify_hour"]?.toInt() }
+            .getOrNull() ?: 9
+        runCatching { DueReminder.schedule(getApplication(), hour) }
     }
 
     /**
